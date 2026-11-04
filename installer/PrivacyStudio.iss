@@ -28,6 +28,7 @@ OutputBaseFilename=PrivacyStudio-Setup-{#AppVersion}
 Compression=lzma2/fast
 SolidCompression=no
 PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=commandline
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
@@ -232,7 +233,7 @@ end;
 
 procedure DoInstall;
 var
-  SuperPwd, AppPwd, MigPwd, ConnFile, ConfFile, Conf, SecretDir, Cs, Dir: String;
+  SuperPwd, AppPwd, MigPwd, ConnFile, ConfFile, Conf, SecretDir, Cs: String;
   i: Integer;
   Scripts: array[0..3] of String;
   Existing: Boolean;
@@ -326,8 +327,8 @@ begin
   begin
     DoInstall;
     if DryRun then SaveStringToFile(ExpandConstant('{app}\dryrun.log'), '', True);
-    if DryRun then FileCopy(LogFile, ExpandConstant('{app}\dryrun.log'), False)
-    else FileCopy(LogFile, ExpandConstant('{app}\installazione.log'), False);
+    if DryRun then CopyFile(LogFile, ExpandConstant('{app}\dryrun.log'), False)
+    else CopyFile(LogFile, ExpandConstant('{app}\installazione.log'), False);
     if Failed then
       MsgBox('L''installazione del database non è andata a buon fine. Il programma è stato copiato ma non è utilizzabile.' + #13#10 +
              'Il dettaglio è in: ' + ExpandConstant('{app}') + '\installazione.log' + #13#10 + 'Contattare l''assistenza.', mbError, MB_OK);
