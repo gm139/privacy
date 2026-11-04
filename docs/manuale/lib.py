@@ -118,8 +118,8 @@ class Doc(BaseDocTemplate):
                 import zlib
                 key = "h-%08x" % zlib.crc32(("%d|%s" % (self.page, text)).encode("utf-8"))
                 self.canv.bookmarkPage(key)
-                self.canv.addOutlineEntry(text, key, 0 if st == "h1" else 1, False)
-                self.notify("TOCEntry", (0 if st == "h1" else 1, text, self.page, key))
+                self.canv.addOutlineEntry(text, key, 0 if (st == "h1" or getattr(self, "flat", False)) else 1, False)
+                self.notify("TOCEntry", (0 if (st == "h1" or getattr(self, "flat", False)) else 1, text, self.page, key))
                 if st == "h1": self._starts[self.page] = text
 
 
@@ -134,7 +134,7 @@ def draw_page(c, doc):
     c.drawRightString(W - RM, H - 1.5 * cm, doc._starts[max(starts)][:70] if starts else "")
     c.line(LM, 1.75 * cm, W - RM, 1.75 * cm)
     c.setFont("U", 7.6)
-    c.drawString(LM, 1.2 * cm, "Manuale d'uso e di conformità - versione 0.9 (bozza per revisione) - novembre 2026")
+    c.drawString(LM, 1.2 * cm, getattr(doc, "footer", "Manuale d'uso e di conformità - versione 0.9 (bozza per revisione) - novembre 2026"))
     c.setFont("U-B", 9); c.setFillColor(NAVY)
     c.drawRightString(W - RM, 1.2 * cm, str(doc.page))
     c.restoreState()
