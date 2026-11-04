@@ -196,6 +196,11 @@ internal static class ScreenshotMode
         const double scale = 2;
         var pw = (int)Math.Ceiling(root.ActualWidth * scale); var ph = (int)Math.Ceiling(root.ActualHeight * scale);
         var rtb = new RenderTargetBitmap(pw, ph, 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+        // con il tema Fluent lo sfondo della finestra è un materiale di sistema (Mica) che non fa parte dell'albero visivo: lo si disegna a mano
+        var dv = new DrawingVisual();
+        using (var dc = dv.RenderOpen())
+            dc.DrawRectangle(new SolidColorBrush((Color)ColorConverter.ConvertFromString(ThemeManager.IsDark ? "#202020" : "#F3F3F3")), null, new Rect(0, 0, root.ActualWidth, root.ActualHeight));
+        rtb.Render(dv);
         rtb.Render(root);
         var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(rtb));
         await using var fs = File.Create(Path.Combine(_dir, name + ".png")); enc.Save(fs);
