@@ -9,6 +9,9 @@ public sealed record PolicyDraft(string RecordClassCode, string TriggerCode, str
 public sealed record ExpiringItem(string RecordClassCode, string ItemType, Guid ItemId, string Reference, DateOnly BaseDate,
     DateOnly ExpiredOn, Guid PolicyVersionId, string Reason);
 
+public sealed record PolicyRow(Guid Id, string RecordClassCode, string TriggerCode, string DurationKindCode, int? Months, int? Days,
+    string? Criterion, DateOnly ReviewDueOn, string StatusCode);
+
 public sealed record ManualReviewItem(Guid PolicyVersionId, string RecordClassCode, string DurationKindCode, string Criterion, DateOnly ReviewDueOn);
 
 /// <summary>
@@ -94,6 +97,22 @@ public sealed class RetentionService
                 DateOnly.FromDateTime(r.GetDateTime(4)), DateOnly.FromDateTime(r.GetDateTime(5)), r.GetGuid(6),
                 $"Durata approvata {(months > 0 ? months + " mesi" : "")}{(months > 0 && days > 0 ? " + " : "")}{(days > 0 ? days + " giorni" : "")} dalla data di riferimento"));
         }
+        return list;
+    }
+
+    public async Task<IReadOnlyList<PolicyRow>> ListPoliciesAsync(Guid practiceId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand("""
+            SELECT id, record_class_code, trigger_code, duration_kind_code, duration_months, duration_days, criterion, review_due_on, status_code
+            FROM ps.retention_policy_versions WHERE practice_id = $1 AND status_code <> 'superseded' ORDER BY record_class_code, version_number DESC
+            """, conn);
+        cmd.Parameters.AddWithValue(practiceId);
+        var list = new List<PolicyRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            list.Add(new PolicyRow(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetString(3), r.IsDBNull(4) ? null : r.GetInt32(4),
+                r.IsDBNull(5) ? null : r.GetInt32(5), r.IsDBNull(6) ? null : r.GetString(6), DateOnly.FromDateTime(r.GetDateTime(7)), r.GetString(8)));
         return list;
     }
 

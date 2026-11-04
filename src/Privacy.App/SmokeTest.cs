@@ -1,4 +1,5 @@
 #if DEBUG
+using System.IO;
 using Npgsql;
 using Privacy.Data;
 
@@ -139,9 +140,60 @@ internal static class SmokeTest
         await main.LoadAsync();
         Console.WriteLine($"pazienti={main.SubjectCount} informative={main.NoticeCount}");
         ok &= main.SubjectCount == 1 && main.NoticeCount == 1 && main.ActivityCount == 2;
+
+        // F05/F06: conservazione, eliminazione guidata, backup (con strumenti simulati) e chiavi di recupero
+        var tmp = Path.Combine(Path.GetTempPath(), "privacy-smoke-" + Guid.NewGuid().ToString("N"));
+        var cfg = new AppConfig(Path.Combine(tmp, "ledger", "disposals.jsonl"), Path.Combine(tmp, "backup"), Path.Combine(tmp, "external"), "simulato");
+        var s2 = new AppServices(Environment.GetEnvironmentVariable("PRIVACY_CONN")!, new FakePgTools(), cfg);
+        var closedId = await s.Requests.RegisterAsync(new RegisterRequestCommand(Guid.NewGuid(), practice, userId, null, "Paolo (smoke)", "other", "email", DateTimeOffset.UtcNow, "Copia", new[] { "access" }));
+        await s.Requests.DecideAsync(Guid.NewGuid(), closedId, userId, "access", "granted", null, DateTimeOffset.UtcNow);
+        await s.Requests.CloseAsync(Guid.NewGuid(), closedId, userId);
+
+        var np = new NewPolicyWindow(s2, practice, userId, await cat.GetAsync("cat_record_class"), await cat.GetAsync("cat_retention_trigger"), await cat.GetAsync("cat_duration_kind"));
+        if (await np.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: regola senza scelte accettata"); return 24; }
+        np.RecordClass.SelectedValue = "requests"; np.Trigger.SelectedValue = "request_closed"; np.Kind.SelectedValue = "fixed"; np.Months.Text = "0";
+        if (!await np.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: nuova regola: " + np.ErrorText); return 25; }
+        var policy = (await s2.Retention.ListPoliciesAsync(practice)).Single();
+        await s2.Retention.ApproveAsync(Guid.NewGuid(), policy.Id, userId);
+        var expired = await s2.Retention.ListExpiredAsync(practice, DateOnly.FromDateTime(DateTime.Today.AddDays(1)));
+        ok &= expired.Any(x => x.ItemId == closedId);
+
+        var dis = new DisposeItemsWindow(s2, userId, expired.Where(x => x.ItemId == closedId).ToList());
+        dis.Reason.Text = "Durata approvata trascorsa (smoke)";
+        if (await dis.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: eliminazione senza conferma"); return 26; }
+        dis.Confirm.Text = "ELIMINA";
+        if (!await dis.RunSubmitAsync() || dis.Disposed != 1) { Console.Error.WriteLine("SMOKE FAIL: eliminazione: " + dis.ErrorText); return 27; }
+        ok &= await s.Requests.GetDetailAsync(closedId) is null;
+        ok &= new DisposalLedger(cfg.LedgerPath).Read().Any(x => x.ItemId == closedId);
+
+        var br = await s2.Backup.BackupAsync(KeyStore.GetOrCreateBackupKey(), KeyStore.BackupKeyVersion);
+        ok &= File.Exists(br.PrimaryPath) && File.Exists(br.ExternalPath) && File.Exists(br.ExternalPath + ".ledger.jsonl");
+        BackupService.VerifyFile(br.ExternalPath!, KeyStore.GetOrCreateBackupKey(), KeyStore.BackupKeyVersion);
+        try { BackupService.VerifyFile(br.ExternalPath!, new byte[32], KeyStore.BackupKeyVersion); ok = false; } catch (BackupFormatException) { }
+
+        var hmacBefore = KeyStore.GetOrCreateHmacKey(); var backupBefore = KeyStore.GetOrCreateBackupKey();
+        var recovery = KeyStore.ExportRecovery("frase di recupero molto lunga");
+        KeyStore.ImportRecovery("frase di recupero molto lunga", recovery);
+        ok &= KeyStore.GetOrCreateHmacKey().SequenceEqual(hmacBefore) && KeyStore.GetOrCreateBackupKey().SequenceEqual(backupBefore);
+
+        var ex = new ExportKeysWindow(); ex.Pass.Text = "frase di recupero molto lunga"; ex.Pass2.Text = "un'altra frase diversa lunga";
+        if (await ex.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: frasi diverse accettate"); return 28; }
+        ex.Pass2.Text = ex.Pass.Text;
+        if (!await ex.RunSubmitAsync() || ex.Result is null) { Console.Error.WriteLine("SMOKE FAIL: esportazione chiavi: " + ex.ErrorText); return 29; }
+
+        await main.LoadAsync();
+        Console.WriteLine($"regole={main.PolicyCount} scaduti={main.ExpiredCount} backup={main.BackupRunCount} | {main.BackupStatusText}");
+        ok &= main.PolicyCount == 1 && main.BackupRunCount >= 1 && main.BackupStatusText.Contains("non configurato");
+        try { Directory.Delete(tmp, true); } catch (IOException) { }
         main.Close(); login.Close();
         Console.WriteLine(ok ? "SMOKE OK" : "SMOKE FAIL: conteggi");
         return ok ? 0 : 11;
     }
+}
+/// <summary>Strumenti PostgreSQL simulati per la prova automatica: restituiscono un file con l'intestazione di pg_dump.</summary>
+internal sealed class FakePgTools : IPgTools
+{
+    public Task<byte[]> DumpAsync(CancellationToken ct = default) => Task.FromResult("PGDMP-simulato"u8.ToArray());
+    public Task RestoreAsync(byte[] dump, CancellationToken ct = default) => Task.CompletedTask;
 }
 #endif

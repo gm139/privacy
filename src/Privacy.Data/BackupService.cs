@@ -5,6 +5,8 @@ using static Privacy.Data.SqlHelpers;
 
 namespace Privacy.Data;
 
+public sealed record BackupRunRow(Guid Id, DateTimeOffset StartedAt, string StatusCode, string? FileName, DateTimeOffset? VerifiedAt, string? ErrorCode);
+
 public sealed record BackupResult(Guid RunId, string FileName, string PrimaryPath, string? ExternalPath, long SizeBytes);
 
 /// <summary>
@@ -17,10 +19,12 @@ public sealed class BackupService
     private readonly IPgTools _tools;
     private readonly string _primaryDir;
     private readonly string? _externalDir;
+    private readonly string? _ledgerPath;
 
-    public BackupService(Db db, IPgTools tools, string primaryDir, string? externalDir)
+    /// <param name="ledgerPath">Registro esterno delle eliminazioni: se indicato, ne viene copiata una versione accanto a ogni backup (serve al ripristino).</param>
+    public BackupService(Db db, IPgTools tools, string primaryDir, string? externalDir, string? ledgerPath = null)
     {
-        _db = db; _tools = tools; _primaryDir = primaryDir; _externalDir = externalDir;
+        _db = db; _tools = tools; _primaryDir = primaryDir; _externalDir = externalDir; _ledgerPath = ledgerPath;
     }
 
     public async Task<BackupResult> BackupAsync(byte[] key, string keyVersion, CancellationToken ct = default)
@@ -38,6 +42,7 @@ public sealed class BackupService
             VerifyFile(primary, key, keyVersion);
             if (external is not null) VerifyFile(external, key, keyVersion);
 
+            CopyLedger(primary); if (external is not null) CopyLedger(external);
             await FinishRunAsync(runId, "ok", name, keyVersion, verified: true, errorCode: null, ct);
             return new BackupResult(runId, name, primary, external, encrypted.Length);
         }
@@ -46,6 +51,19 @@ public sealed class BackupService
             await FinishRunAsync(runId, "failed", null, keyVersion, verified: false, errorCode: e.GetType().Name, ct);
             throw;
         }
+    }
+
+    public async Task<IReadOnlyList<BackupRunRow>> ListRunsAsync(int limit = 50, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand("SELECT id, started_at, status_code, artifact_reference, verified_at, error_code FROM ps.backup_runs ORDER BY started_at DESC LIMIT $1", conn);
+        cmd.Parameters.AddWithValue(limit);
+        var list = new List<BackupRunRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            list.Add(new BackupRunRow(r.GetGuid(0), r.GetFieldValue<DateTimeOffset>(1), r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetFieldValue<DateTimeOffset>(4), r.IsDBNull(5) ? null : r.GetString(5)));
+        return list;
     }
 
     /// <summary>Decifra il file e controlla che sia una copia di pg_dump valida (intestazione «PGDMP»).</summary>
@@ -72,6 +90,12 @@ public sealed class BackupService
             """, ct, backupRunId, started, outcomeCode, report, performedBy);
         await Audit(conn, tx, performedBy, "backup.restore_test", "backup_run", backupRunId, ct);
         await tx.CommitAsync(ct);
+    }
+
+    private void CopyLedger(string backupPath)
+    {
+        if (_ledgerPath is null || !File.Exists(_ledgerPath)) return;
+        File.Copy(_ledgerPath, backupPath + ".ledger.jsonl", overwrite: true);
     }
 
     private string Write(string dir, string name, byte[] encrypted, string keyVersion)

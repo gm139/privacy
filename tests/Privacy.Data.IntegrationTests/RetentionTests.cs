@@ -85,4 +85,17 @@ public class RetentionTests
         q.Parameters.AddWithValue(a);
         await Assert.ThrowsAsync<PostgresException>(() => q.ExecuteNonQueryAsync());
     }
+
+    [Fact]
+    public async Task ListPolicies_ShowsDraftsAndApproved_NotSuperseded()
+    {
+        if (Conn is null) return;
+        var (db, practice, user) = await SetupAsync();
+        var svc = new RetentionService(db);
+        var p = await svc.CreateDraftAsync(Guid.NewGuid(), practice, user, new PolicyDraft("requests", "request_closed", "fixed", 24, null, null, null, new DateOnly(2027, 1, 1)));
+        Assert.Equal("draft", (await svc.ListPoliciesAsync(practice)).Single().StatusCode);
+        await svc.ApproveAsync(Guid.NewGuid(), p, user);
+        var row = (await svc.ListPoliciesAsync(practice)).Single();
+        Assert.Equal(("approved", 24), (row.StatusCode, row.Months));
+    }
 }

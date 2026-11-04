@@ -92,9 +92,11 @@ public class BackupRestoreTests
         await requests.CloseAsync(Guid.NewGuid(), id, user);
 
         // 1. backup cifrato, con copia esterna, verificato
-        var backup = new BackupService(db, Tools(), Path.Combine(root, "primary"), Path.Combine(root, "external"));
+        var backup = new BackupService(db, Tools(), Path.Combine(root, "primary"), Path.Combine(root, "external"), ledgerPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(ledgerPath)!); File.WriteAllText(ledgerPath, "");
         var result = await backup.BackupAsync(Key, "k1");
         Assert.True(File.Exists(result.PrimaryPath) && File.Exists(result.ExternalPath));
+        Assert.True(File.Exists(result.ExternalPath + ".ledger.jsonl"));   // il registro delle eliminazioni viaggia con il backup
         Assert.Equal(1, await Count(db, "SELECT count(*) FROM ps.backup_runs WHERE id = $1 AND status_code = 'ok' AND verified_at IS NOT NULL AND artifact_reference = $2", result.RunId, result.FileName));
         Assert.DoesNotContain("Mario", System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(result.PrimaryPath)));   // il file non contiene dati in chiaro
         Assert.Throws<BackupFormatException>(() => BackupService.VerifyFile(result.PrimaryPath, new byte[32], "k1"));

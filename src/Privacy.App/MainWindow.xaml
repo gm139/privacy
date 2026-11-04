@@ -39,6 +39,72 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
+            <TabItem Header="Conservazione">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,8,0,0">
+                    <TextBlock Text="Regole di conservazione" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                        <Button Content="Nuova _regola…" Click="OnNewPolicy" TabIndex="40"/>
+                        <Button Content="Appro_va selezionata" Click="OnApprovePolicy" Margin="8,0,0,0" TabIndex="41"/>
+                    </StackPanel>
+                    <DataGrid x:Name="PoliciesGrid" Height="150" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single"
+                              AutomationProperties.Name="Regole di conservazione">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Documentazione" Binding="{Binding Class}" Width="*"/>
+                            <DataGridTextColumn Header="Decorre da" Binding="{Binding Trigger}" Width="180"/>
+                            <DataGridTextColumn Header="Durata" Binding="{Binding Duration}" Width="200"/>
+                            <DataGridTextColumn Header="Stato" Binding="{Binding Status}" Width="100"/>
+                            <DataGridTextColumn Header="Riesame entro" Binding="{Binding Review}" Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Text="Elementi scaduti" FontWeight="SemiBold" Margin="0,14,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                        <Button Content="_Elimina selezionati…" Click="OnDisposeSelected" TabIndex="42"/>
+                    </StackPanel>
+                    <DataGrid x:Name="ExpiredGrid" Height="170" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Extended"
+                              AutomationProperties.Name="Elementi scaduti">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="170"/>
+                            <DataGridTextColumn Header="Riferimento" Binding="{Binding Reference}" Width="160"/>
+                            <DataGridTextColumn Header="Data di riferimento" Binding="{Binding BaseDate}" Width="140"/>
+                            <DataGridTextColumn Header="Scaduto il" Binding="{Binding ExpiredOn}" Width="110"/>
+                            <DataGridTextColumn Header="Motivo" Binding="{Binding Reason}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Text="Regole da rivedere (illimitate o a criterio, riesame scaduto)" FontWeight="SemiBold" Margin="0,14,0,0"/>
+                    <DataGrid x:Name="ReviewGrid" Height="100" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column"
+                              AutomationProperties.Name="Regole da rivedere">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Documentazione" Binding="{Binding Class}" Width="*"/>
+                            <DataGridTextColumn Header="Natura" Binding="{Binding Kind}" Width="160"/>
+                            <DataGridTextColumn Header="Criterio" Binding="{Binding Criterion}" Width="2*"/>
+                            <DataGridTextColumn Header="Riesame era entro" Binding="{Binding Review}" Width="140"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Backup">
+                <DockPanel Margin="0,8,0,0">
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock x:Name="BackupStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button x:Name="BackupNowButton" Content="Esegui _backup ora" Click="OnBackupNow" TabIndex="50"/>
+                            <Button Content="_Verifica un file…" Click="OnVerifyBackup" Margin="8,0,0,0" TabIndex="51"/>
+                            <Button Content="_Esporta chiavi di recupero…" Click="OnExportKeys" Margin="8,0,0,0" TabIndex="52"/>
+                            <Button Content="_Importa chiavi…" Click="OnImportKeys" Margin="8,0,0,0" TabIndex="53"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <DataGrid x:Name="BackupGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" AutomationProperties.Name="Esecuzioni di backup">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Avvio" Binding="{Binding Started}" Width="160"/>
+                            <DataGridTextColumn Header="Esito" Binding="{Binding Status}" Width="110"/>
+                            <DataGridTextColumn Header="Verificato" Binding="{Binding Verified}" Width="160"/>
+                            <DataGridTextColumn Header="File" Binding="{Binding File}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
             <TabItem Header="Registro">
                 <DockPanel Margin="0,8,0,0">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">

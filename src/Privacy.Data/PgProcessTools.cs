@@ -17,20 +17,36 @@ public interface IPgTools
 /// mai dalla riga di comando.
 /// </summary>
 public sealed record PgProcessTools(string Executable, IReadOnlyList<string> Prefix, IReadOnlyList<string> DumpArgs,
-    IReadOnlyList<string> RestoreArgs, IReadOnlyDictionary<string, string>? Environment = null) : IPgTools
+    IReadOnlyList<string> RestoreArgs, IReadOnlyDictionary<string, string>? Environment = null, bool Wrapper = true) : IPgTools
 {
+    /// <summary>
+    /// Strumenti installati sulla macchina: <paramref name="binDir"/> è la cartella con pg_dump e pg_restore.
+    /// Host, porta, database e utente vengono dalla stringa di connessione; la password passa da PGPASSWORD (non dalla riga di comando).
+    /// </summary>
+    public static PgProcessTools Native(string binDir, string connectionString, string? restoreDatabase = null)
+    {
+        var b = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        var common = new List<string> { "-h", b.Host ?? "127.0.0.1", "-p", b.Port.ToString(), "-U", b.Username ?? "privacy_app", "-w" };
+        var env = new Dictionary<string, string>();
+        if (!string.IsNullOrEmpty(b.Password)) env["PGPASSWORD"] = b.Password;
+        var dump = common.Concat(new[] { "-Fc", b.Database ?? "privacy" }).ToList();
+        var restore = common.Concat(new[] { "-d", restoreDatabase ?? "privacy_restore" }).ToList();
+        return new PgProcessTools(binDir, Array.Empty<string>(), dump, restore, env, Wrapper: false);
+    }
+
     public Task<byte[]> DumpAsync(CancellationToken ct = default) => RunAsync("pg_dump", DumpArgs, null, ct);
 
     public async Task RestoreAsync(byte[] dump, CancellationToken ct = default) => await RunAsync("pg_restore", RestoreArgs, dump, ct);
 
     private async Task<byte[]> RunAsync(string tool, IReadOnlyList<string> args, byte[]? stdin, CancellationToken ct)
     {
-        var psi = new ProcessStartInfo(Executable)
+        var fileName = Wrapper ? Executable : Path.Combine(Executable, OperatingSystem.IsWindows() ? tool + ".exe" : tool);
+        var psi = new ProcessStartInfo(fileName)
         {
             RedirectStandardInput = stdin is not null, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false
         };
         foreach (var a in Prefix) psi.ArgumentList.Add(a);
-        psi.ArgumentList.Add(tool);
+        if (Wrapper) psi.ArgumentList.Add(tool);
         foreach (var a in args) psi.ArgumentList.Add(a);
         if (Environment is not null) foreach (var kv in Environment) psi.Environment[kv.Key] = kv.Value;
 
