@@ -40,7 +40,7 @@ public sealed class PurposeWindow : DialogForm
         if (existingPurposeId is null)
         {
             PurposeName = AddText("_Nome della finalità (es. Cura e assistenza)");
-            Description = AddText("_Descrizione", multiline: true);
+            Description = AddText("_Descrizione della finalità (obbligatoria alla pubblicazione)", multiline: true);
             Assessment = AddText("_Valutazione giuridica del titolare", multiline: true);
             Consent = AddCombo("Valutazione sul _consenso", consent);
         }
@@ -61,8 +61,9 @@ public sealed class PurposeWindow : DialogForm
                 return null;
             }
             if (string.IsNullOrWhiteSpace(PurposeName.Text)) return "Il nome della finalità è obbligatorio.";
+            if (string.IsNullOrWhiteSpace(Description.Text)) return "La descrizione della finalità è obbligatoria.";
             if (string.IsNullOrWhiteSpace(Assessment.Text)) return "La valutazione giuridica è obbligatoria.";
-            await s.Registry.AddPurposeAsync(versionId, userId, PurposeName.Text.Trim(), string.IsNullOrWhiteSpace(Description.Text) ? null : Description.Text.Trim(),
+            await s.Registry.AddPurposeAsync(versionId, userId, PurposeName.Text.Trim(), Description.Text.Trim(),
                 Assessment.Text.Trim(), Sel(Consent), new[] { ground });
             return null;
         };

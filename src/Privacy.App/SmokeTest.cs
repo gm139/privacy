@@ -72,7 +72,7 @@ internal static class SmokeTest
         editor.Check("cat_data_category", "identification"); editor.Check("cat_subject_category", "patients"); editor.Check("cat_recipient_category", "none_internal");
         await editor.SaveAsync();
         var pw = new PurposeWindow(s, userId, uiVersion, null, await cat.GetAsync("cat_consent_assessment"), await cat.GetAsync("cat_article6"), await cat.GetAsync("cat_article9"));
-        pw.PurposeName.Text = "Organizzazione degli appuntamenti"; pw.Assessment.Text = "Necessario per erogare la prestazione"; pw.Scope.Text = "Agenda";
+        pw.PurposeName.Text = "Organizzazione degli appuntamenti"; pw.Description.Text = "Gestione dell'agenda"; pw.Assessment.Text = "Necessario per erogare la prestazione"; pw.Scope.Text = "Agenda";
         if (await pw.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: finalità senza scelte accettata"); return 22; }
         pw.Consent.SelectedValue = "not_required"; pw.Article6.SelectedValue = "contract";
         if (!await pw.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: finalità: " + pw.ErrorText); return 23; }
