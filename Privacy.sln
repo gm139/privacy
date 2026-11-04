@@ -11,6 +11,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{2A4DD1A4
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Privacy.Domain.Tests", "tests\Privacy.Domain.Tests\Privacy.Domain.Tests.csproj", "{401FF207-F50A-48C1-9F95-0D342804523F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Privacy.Data", "src\Privacy.Data\Privacy.Data.csproj", "{5308880B-F082-46DA-9B26-529602B3E242}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Privacy.Data.IntegrationTests", "tests\Privacy.Data.IntegrationTests\Privacy.Data.IntegrationTests.csproj", "{D9A42130-2211-4494-B461-734EC971B47E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +32,19 @@ Global
 		{401FF207-F50A-48C1-9F95-0D342804523F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{401FF207-F50A-48C1-9F95-0D342804523F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{401FF207-F50A-48C1-9F95-0D342804523F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5308880B-F082-46DA-9B26-529602B3E242}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5308880B-F082-46DA-9B26-529602B3E242}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5308880B-F082-46DA-9B26-529602B3E242}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5308880B-F082-46DA-9B26-529602B3E242}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9A42130-2211-4494-B461-734EC971B47E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9A42130-2211-4494-B461-734EC971B47E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9A42130-2211-4494-B461-734EC971B47E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9A42130-2211-4494-B461-734EC971B47E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{02F24986-0943-43C2-AEBB-7F9DA3EA393B} = {6C58140E-1BCB-4502-977F-8557213CEF5D}
 		{401FF207-F50A-48C1-9F95-0D342804523F} = {2A4DD1A4-C5B0-4030-866B-1DA840F8060E}
+		{5308880B-F082-46DA-9B26-529602B3E242} = {6C58140E-1BCB-4502-977F-8557213CEF5D}
+		{D9A42130-2211-4494-B461-734EC971B47E} = {2A4DD1A4-C5B0-4030-866B-1DA840F8060E}
 	EndGlobalSection
 EndGlobal
