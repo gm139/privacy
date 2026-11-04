@@ -107,6 +107,15 @@ public class DialogForm : Window
         return box;
     }
 
+    /// <summary>Modello per elenchi con testo a capo (nessuna barra di scorrimento orizzontale).</summary>
+    public static DataTemplate WrapTemplate()
+    {
+        var tb = new FrameworkElementFactory(typeof(TextBlock));
+        tb.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("."));
+        tb.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+        return new DataTemplate { VisualTree = tb };
+    }
+
     /// <summary>Valore scelto in un elenco; se non è stata fatta alcuna scelta, errore comprensibile (nessuna scelta predefinita).</summary>
     public static string Sel(ComboBox box)
     {

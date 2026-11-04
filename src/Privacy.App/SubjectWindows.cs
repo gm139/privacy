@@ -96,10 +96,11 @@ public sealed class DeliveryWindow : DialogForm
 public sealed class DeliveriesHistoryWindow : Window
 {
     private readonly AppServices _s; private readonly SubjectRecord _subject;
-    private readonly ListBox _list = new() { MinHeight = 220 };
+    private readonly ListBox _list = new() { MinHeight = 90 };
     private readonly TextBox _preview = new() { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, MinHeight = 200, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly TextBlock _integrity = new() { Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap };
     private IReadOnlyList<DeliveryRow> _rows = Array.Empty<DeliveryRow>();
+    private Dictionary<string, string> _receiptLabels = new();
 
     public int Count => _rows.Count;
     public string? LastIntegrityText => _integrity.Text;
@@ -107,7 +108,7 @@ public sealed class DeliveriesHistoryWindow : Window
     public DeliveriesHistoryWindow(AppServices s, SubjectRecord subject)
     {
         _s = s; _subject = subject;
-        Title = $"Consegne - {subject.FirstName} {subject.LastName}"; Width = 760; Height = 640; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Title = $"Consegne - {subject.FirstName} {subject.LastName}"; Width = 760; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var show = new Button { Content = "_Mostra modulo", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 8, 8, 0) };
         var copy = new Button { Content = "_Copia testo", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 8, 0, 0) };
         var panel = new StackPanel { Margin = new Thickness(16) };
@@ -115,7 +116,7 @@ public sealed class DeliveriesHistoryWindow : Window
         panel.Children.Add(_list);
         panel.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Children = { show, copy } });
         panel.Children.Add(_integrity); panel.Children.Add(_preview);
-        Content = new ScrollViewer { Content = panel };
+        Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         System.Windows.Automation.AutomationProperties.SetName(_list, "Consegne registrate");
         System.Windows.Automation.AutomationProperties.SetName(_preview, "Testo del modulo");
         show.Click += async (_, _) => await ShowSelectedAsync();
@@ -127,8 +128,9 @@ public sealed class DeliveriesHistoryWindow : Window
     {
         try
         {
+            if (_receiptLabels.Count == 0) _receiptLabels = (await _s.Catalog.GetAsync("cat_receipt_status")).ToDictionary(i => i.Code, i => i.Label);
             _rows = await _s.Notices.ListDeliveriesAsync(_subject.Id);
-            _list.ItemsSource = _rows.Select(r => $"{r.DeliveryCode}   {r.DeliveredAt?.ToLocalTime():dd/MM/yyyy HH:mm}   {r.Title} v{r.VersionNumber}   [{r.ReceiptStatusCode}]").ToList();
+            _list.ItemsSource = _rows.Select(r => $"{r.DeliveryCode}   {r.DeliveredAt?.ToLocalTime():dd/MM/yyyy HH:mm}   {r.Title} v{r.VersionNumber}   [{(_receiptLabels.TryGetValue(r.ReceiptStatusCode, out var rl) ? rl : r.ReceiptStatusCode)}]").ToList();
         }
         catch (Exception) { _integrity.Text = "Impossibile leggere le consegne."; }
     }

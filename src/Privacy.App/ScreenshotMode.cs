@@ -58,7 +58,7 @@ internal static class ScreenshotMode
 
         // 11 - dettaglio richiesta
         var reqs = await s.Requests.ListDueAsync(practice, DateOnly.FromDateTime(DateTime.Today), 400);
-        var rd = new RequestDetailWindow(s, practice, user, reqs[0].Id) { Height = 640 };
+        var rd = new RequestDetailWindow(s, practice, user, reqs[0].Id);
         await Snap(rd, "11-dettaglio-richiesta", load: () => rd.LoadAsync()); rd.Close();
 
         // 12 - dettaglio incidente
@@ -89,7 +89,7 @@ internal static class ScreenshotMode
         var dw = new DeliveryWindow(s, user, subjects[0], await s.Notices.ListPublishedAsync(practice), await cat.GetAsync("cat_delivery_channel"), await cat.GetAsync("cat_receipt_status"));
         dw.Notice.SelectedIndex = 0; dw.Channel.SelectedValue = "in_person"; dw.Receipt.SelectedValue = "delivered_unsigned";
         await Snap(dw, "16-consegna-informativa"); dw.Close();
-        var hw = new DeliveriesHistoryWindow(s, subjects[0]) { Height = 700 };
+        var hw = new DeliveriesHistoryWindow(s, subjects[0]);
         hw.Show(); await hw.LoadAsync(); await hw.ShowSelectedAsyncFirst(); await Idle();
         await Snap(hw, "17-storico-consegne"); hw.Close();
 

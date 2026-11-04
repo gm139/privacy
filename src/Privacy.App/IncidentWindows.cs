@@ -46,19 +46,22 @@ public sealed class IncidentDetailWindow : Window
     private readonly Button _awareness = new() { Content = "_Consapevolezza…" }, _assess = new() { Content = "_Valutazione…" },
                             _action = new() { Content = "_Registra azione…" }, _close = new() { Content = "C_hiudi incidente" };
     private IncidentDetail? _detail;
+    private Dictionary<string, string> _typeLabels = new();
 
     public string HeaderText => _header.Text;
     public IncidentDetailWindow(AppServices s, Guid userId, Guid incidentId)
     {
         _s = s; _user = userId; _id = incidentId;
-        Title = "Incidente"; Width = 760; Height = 640; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Title = "Incidente"; Width = 760; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
         foreach (var b in new[] { _awareness, _assess, _action, _close }) { b.Margin = new Thickness(0, 0, 8, 0); b.Padding = new Thickness(12, 6, 12, 6); buttons.Children.Add(b); }
         var panel = new StackPanel { Margin = new Thickness(16) };
         panel.Children.Add(_header); panel.Children.Add(_info);
         panel.Children.Add(new TextBlock { Text = "Azioni registrate", FontWeight = FontWeights.SemiBold }); panel.Children.Add(_actions);
         panel.Children.Add(buttons); panel.Children.Add(_status);
-        Content = new ScrollViewer { Content = panel };
+        Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        _actions.ItemTemplate = DialogForm.WrapTemplate();
+        ScrollViewer.SetHorizontalScrollBarVisibility(_actions, ScrollBarVisibility.Disabled);
         System.Windows.Automation.AutomationProperties.SetName(_actions, "Azioni registrate");
         _awareness.Click += async (_, _) => await OnAwareness();
         _assess.Click += async (_, _) => await OnAssess();
@@ -71,6 +74,7 @@ public sealed class IncidentDetailWindow : Window
     {
         try
         {
+            if (_typeLabels.Count == 0) _typeLabels = (await _s.Catalog.GetAsync("cat_incident_action_type")).ToDictionary(i => i.Code, i => i.Label);
             _detail = await _s.Incidents.GetDetailAsync(_id);
             if (_detail is null) { _status.Text = "Incidente non trovato."; return; }
             var d = _detail;
@@ -79,7 +83,7 @@ public sealed class IncidentDetailWindow : Window
                 : $"Notifica al Garante, se dovuta, entro {TimeZoneInfo.ConvertTime(IncidentClock.Deadline(d.AwarenessAt.Value), Rome):dd/MM/yyyy HH:mm} "
                   + $"({Remaining(IncidentClock.Remaining(d.AwarenessAt.Value, DateTimeOffset.UtcNow))}).";
             _info.Text = $"{deadline}\nValutazioni registrate: {d.AssessmentCount}\n\n{d.Description}";
-            _actions.ItemsSource = d.Actions.Select(a => $"{a.OccurredAt.ToLocalTime():dd/MM/yyyy HH:mm}  [{a.TypeCode}] {a.Description}{(a.ProtocolReference is null ? "" : $"  (protocollo {a.ProtocolReference})")}").ToList();
+            _actions.ItemsSource = d.Actions.Select(a => $"{a.OccurredAt.ToLocalTime():dd/MM/yyyy HH:mm}  [{(_typeLabels.TryGetValue(a.TypeCode, out var tl) ? tl : a.TypeCode)}] {a.Description}{(a.ProtocolReference is null ? "" : $"  (protocollo {a.ProtocolReference})")}").ToList();
             foreach (var b in new[] { _awareness, _assess, _action, _close }) b.IsEnabled = !d.Closed;
             _status.Text = "";
         }
