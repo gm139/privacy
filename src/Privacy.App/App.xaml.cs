@@ -23,6 +23,7 @@ public partial class App : Application
             var services = new AppServices(cs);
 #if DEBUG
             if (smoke) { Shutdown(await SmokeTest.RunAsync(services)); return; }
+            if (e.Args.Contains("--seed-demo")) { Shutdown(await ScreenshotMode.SeedOnlyAsync()); return; }
             if (e.Args.Contains("--screenshots")) { Shutdown(await ScreenshotMode.RunAsync(services, e.Args[Array.IndexOf(e.Args, "--screenshots") + 1])); return; }
 #endif
             if (e.Args.Contains("--reapply-disposals")) { Shutdown(await ReapplyDisposalsAsync(services)); return; }

@@ -113,6 +113,22 @@ internal static class ScreenshotMode
         return 0;
     }
 
+    /// <summary>Solo sviluppo: studio e dati dimostrativi INVENTATI su un database vuoto, senza immagini. Utente dott.rossi / «frase di prova molto lunga 123».</summary>
+    public static async Task<int> SeedOnlyAsync()
+    {
+        var tmp = Path.Combine(Path.GetTempPath(), "privacy-seed-" + Guid.NewGuid().ToString("N"));
+        var cfg = new AppConfig(Path.Combine(tmp, "ledger", "disposals.jsonl"), Path.Combine(tmp, "backup"), Path.Combine(tmp, "esterna"), @"C:\Program Files\PostgreSQL\17\bin");
+        var s = new AppServices(Environment.GetEnvironmentVariable("PRIVACY_CONN")!, new FakePgTools(), cfg);
+        var setup = new SetupService(s.Db);
+        if (await setup.IsConfiguredAsync()) { Console.Error.WriteLine("il database contiene già uno studio: niente da caricare"); return 2; }
+        var (practice, user) = await setup.CreateFirstAsync(new PracticeInput("Studio Medico Rossi", "Dott. Mario Rossi", "RSSMRA70A01B157X", "Via Roma 10, 25100 Brescia (BS)", "privacy@studio-rossi.example", "030 0000000", null),
+            "dott.rossi", "Dott. Rossi", "frase di prova molto lunga 123");
+        await Seed(s, practice, user);
+        try { Directory.Delete(tmp, true); } catch (IOException) { }
+        Console.WriteLine("SEED OK");
+        return 0;
+    }
+
     private static async Task Seed(AppServices s, Guid practice, Guid user)
     {
         // interessati
