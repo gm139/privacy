@@ -13,6 +13,7 @@ public partial class LoginWindow : Window
     {
         InitializeComponent();
         _services = services; _practiceId = practiceId;
+        StatusText.Foreground = ThemeManager.Error;
         Loaded += (_, _) => UserBox.Focus();
     }
 

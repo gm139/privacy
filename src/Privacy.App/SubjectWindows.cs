@@ -108,7 +108,7 @@ public sealed class DeliveriesHistoryWindow : Window
     public DeliveriesHistoryWindow(AppServices s, SubjectRecord subject)
     {
         _s = s; _subject = subject;
-        Title = $"Consegne - {subject.FirstName} {subject.LastName}"; Width = 760; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        FontSize = 14; Title = $"Consegne - {subject.FirstName} {subject.LastName}"; Width = 760; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var show = new Button { Content = "_Mostra modulo", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 8, 8, 0) };
         var copy = new Button { Content = "_Copia testo", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 8, 0, 0) };
         var panel = new StackPanel { Margin = new Thickness(16) };

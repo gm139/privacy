@@ -9,6 +9,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ThemeManager.Apply(e.Args.Contains("--screenshots") ? ThemeChoiceFromArgs(e.Args) : UiSettings.LoadTheme());
         var smoke = e.Args.Contains("--smoke");
         try
         {
@@ -108,5 +109,11 @@ public partial class App : Application
             MessageBox.Show("Ripristino non eseguito: " + ex.Message, "Ripristino", MessageBoxButton.OK, MessageBoxImage.Error);
             return 3;
         }
+    }
+
+    private static ThemeChoice ThemeChoiceFromArgs(string[] args)
+    {
+        var i = Array.IndexOf(args, "--theme");
+        return i >= 0 && i + 1 < args.Length && Enum.TryParse<ThemeChoice>(args[i + 1], true, out var c) ? c : ThemeChoice.Light;
     }
 }

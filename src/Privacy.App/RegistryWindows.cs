@@ -79,7 +79,7 @@ public sealed class ActivityEditorWindow : Window
     private readonly DatePicker _review = new();
     private readonly StackPanel _categories = new();
     private readonly ListBox _purposes = new() { MinHeight = 110 };
-    private readonly TextBlock _status = new() { Foreground = System.Windows.Media.Brushes.Firebrick, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
+    private readonly TextBlock _status = new() { Foreground = ThemeManager.Error, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
     private readonly Button _save = new() { Content = "_Salva dati e categorie" }, _addPurpose = new() { Content = "Aggiungi _finalità…" },
         _addGround = new() { Content = "Aggiungi pre_supposto…" }, _removePurpose = new() { Content = "_Rimuovi finalità" },
         _submit = new() { Content = "_Invia in verifica" }, _publish = new() { Content = "_Pubblica…" };
@@ -96,7 +96,7 @@ public sealed class ActivityEditorWindow : Window
     public ActivityEditorWindow(AppServices s, Guid practiceId, Guid userId, Guid versionId)
     {
         _s = s; _practice = practiceId; _user = userId; _versionId = versionId;
-        Title = "Attività del registro"; Width = 820; Height = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        FontSize = 14; Title = "Attività del registro"; Width = 820; Height = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var panel = new StackPanel { Margin = new Thickness(16) };
         panel.Children.Add(_header);
         panel.Children.Add(new Label { Content = "_Descrizione dell'attività", Target = _description, Padding = new Thickness(0, 10, 0, 2) }); panel.Children.Add(_description);
@@ -122,6 +122,7 @@ public sealed class ActivityEditorWindow : Window
 
     private async Task Guard(Func<Task> action)
     {
+        _status.Foreground = ThemeManager.Error;
         try { _status.Text = ""; await action(); }
         catch (Npgsql.PostgresException e) { _status.Text = DialogForm.FriendlyDb(e); }
         catch (FormatException e) { _status.Text = e.Message; }
@@ -182,7 +183,7 @@ public sealed class ActivityEditorWindow : Window
             _review.SelectedDate is { } d ? DateOnly.FromDateTime(d) : null);
         await _s.Registry.SetCategoriesAsync(_versionId, _user, Checked("cat_data_category"), Checked("cat_subject_category"), Checked("cat_recipient_category"));
         await LoadAsync();
-        _status.Foreground = System.Windows.Media.Brushes.DarkGreen; _status.Text = "Salvato.";
+        _status.Foreground = ThemeManager.Success; _status.Text = "Salvato.";
     }
 
     private async Task<DialogForm> BuildPurposeDialog(Guid? existing) => new PurposeWindow(_s, _user, _versionId, existing,
@@ -233,7 +234,7 @@ public sealed class RegistryExportWindow : Window
     public string Text => _text.Text;
     public RegistryExportWindow(string text, DateOnly asOf)
     {
-        Title = $"Registro alla data {asOf:dd/MM/yyyy}"; Width = 860; Height = 680; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        FontSize = 14; Title = $"Registro alla data {asOf:dd/MM/yyyy}"; Width = 860; Height = 680; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         _text.Text = text;
         var copy = new Button { Content = "_Copia", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
         var save = new Button { Content = "_Salva come file…", Padding = new Thickness(12, 6, 12, 6) };

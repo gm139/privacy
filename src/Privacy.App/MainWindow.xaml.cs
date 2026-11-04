@@ -1,3 +1,4 @@
+using System.Windows.Controls;
 using Microsoft.Win32;
 using System.Globalization;
 using System.Windows;
@@ -42,7 +43,21 @@ public partial class MainWindow : Window
         InitializeComponent();
         _services = services; _practiceId = practiceId; _userId = userId;
         HeaderText.Text = $"Scadenze - {displayName}";
+        StatusText.Foreground = ThemeManager.Error;
+        // il messaggio verde solo per l'esito positivo della verifica di un file; ogni altro testo torna al colore d'errore
+        System.ComponentModel.DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock))
+            .AddValueChanged(StatusText, (_, _) => StatusText.Foreground = StatusText.Text == VerifyOk ? ThemeManager.Success : ThemeManager.Error);
+        foreach (ComboBoxItem item in ThemeBox.Items) if ((string)item.Tag == ThemeManager.Current.ToString()) ThemeBox.SelectedItem = item;
         Loaded += async (_, _) => await LoadAsync();
+    }
+
+    private const string VerifyOk = "Il file si decifra ed è una copia valida.";
+
+    private void OnThemeChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || ThemeBox.SelectedItem is not ComboBoxItem { Tag: string tag } || !Enum.TryParse<ThemeChoice>(tag, out var choice)) return;
+        ThemeManager.Apply(choice);
+        UiSettings.SaveTheme(choice);
     }
 
     private async void OnRefresh(object sender, RoutedEventArgs e) => await LoadAsync();
@@ -179,9 +194,9 @@ public partial class MainWindow : Window
     {
         var dlg = new OpenFileDialog { Filter = "Backup Privacy Studio (*.psbk)|*.psbk" };
         if (dlg.ShowDialog(this) != true) return;
-        try { BackupService.VerifyFile(dlg.FileName, KeyStore.GetOrCreateBackupKey(), KeyStore.BackupKeyVersion); StatusText.Foreground = System.Windows.Media.Brushes.DarkGreen; StatusText.Text = "Il file si decifra ed è una copia valida."; }
-        catch (BackupFormatException ex) { StatusText.Foreground = System.Windows.Media.Brushes.Firebrick; StatusText.Text = "File non valido: " + ex.Message + "."; }
-        catch (Exception) { StatusText.Foreground = System.Windows.Media.Brushes.Firebrick; StatusText.Text = "Impossibile leggere il file."; }
+        try { BackupService.VerifyFile(dlg.FileName, KeyStore.GetOrCreateBackupKey(), KeyStore.BackupKeyVersion); StatusText.Text = VerifyOk; }
+        catch (BackupFormatException ex) { StatusText.Text = "File non valido: " + ex.Message + "."; }
+        catch (Exception) { StatusText.Text = "Impossibile leggere il file."; }
     }
 
     private void OnExportKeys(object sender, RoutedEventArgs e)

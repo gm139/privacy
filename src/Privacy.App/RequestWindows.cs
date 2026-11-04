@@ -51,7 +51,7 @@ public sealed class RequestDetailWindow : Window
     private readonly TextBlock _info = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 8) };
     private readonly ListBox _rights = new() { Height = 90 };
     private readonly ListBox _events = new() { MinHeight = 140 };
-    private readonly TextBlock _status = new() { Foreground = System.Windows.Media.Brushes.Firebrick, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _status = new() { Foreground = ThemeManager.Error, TextWrapping = TextWrapping.Wrap };
     private readonly Button _extend = new() { Content = "_Proroga…" }, _decide = new() { Content = "_Decisione…" }, _close = new() { Content = "_Chiudi richiesta" };
     private RequestDetail? _detail;
     private Dictionary<string, string> _rightLabels = new();
@@ -61,7 +61,7 @@ public sealed class RequestDetailWindow : Window
     public RequestDetailWindow(AppServices s, Guid practiceId, Guid userId, Guid requestId)
     {
         _s = s; _practice = practiceId; _user = userId; _id = requestId;
-        Title = "Richiesta dei diritti"; Width = 720; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        FontSize = 14; Title = "Richiesta dei diritti"; Width = 720; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
         foreach (var b in new[] { _extend, _decide, _close }) { b.Margin = new Thickness(0, 0, 8, 0); b.Padding = new Thickness(12, 6, 12, 6); buttons.Children.Add(b); }
         var panel = new StackPanel { Margin = new Thickness(16) };

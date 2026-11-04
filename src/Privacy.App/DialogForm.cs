@@ -45,7 +45,7 @@ public sealed class DateTimeField
 public class DialogForm : Window
 {
     private readonly StackPanel _fields = new() { Margin = new Thickness(20, 20, 20, 8) };
-    private readonly TextBlock _error = new() { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap, MinHeight = 20, Margin = new Thickness(0, 4, 0, 8) };
+    private readonly TextBlock _error = new() { Foreground = ThemeManager.Error, TextWrapping = TextWrapping.Wrap, MinHeight = 20, Margin = new Thickness(0, 4, 0, 8) };
     private readonly Button _ok = new() { Content = "_Conferma", IsDefault = true, MinWidth = 100 };
     private readonly Button _cancel = new() { Content = "A_nnulla", IsCancel = true, MinWidth = 100, Margin = new Thickness(8, 0, 0, 0) };
     private int _tab;
@@ -58,7 +58,7 @@ public class DialogForm : Window
 
     public DialogForm(string title, double width = 500)
     {
-        Title = title; Width = width; MaxHeight = 760; SizeToContent = SizeToContent.Height;
+        FontSize = 14; Title = title; Width = width; MaxHeight = 760; SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ResizeMode = ResizeMode.NoResize;
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(20, 0, 20, 16), Children = { _ok, _cancel } };
         var bottom = new StackPanel { Children = { new Border { Child = _error, Margin = new Thickness(20, 0, 20, 0) }, buttons } };
@@ -170,5 +170,5 @@ public class DialogForm : Window
         return list;
     }
 
-    public void AddNote(string text) => _fields.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Foreground = Brushes.DimGray });
+    public void AddNote(string text) => _fields.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Foreground = ThemeManager.Muted });
 }

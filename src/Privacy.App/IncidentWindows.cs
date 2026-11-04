@@ -42,7 +42,7 @@ public sealed class IncidentDetailWindow : Window
     private readonly TextBlock _header = new() { FontSize = 16, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _info = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 8) };
     private readonly ListBox _actions = new() { MinHeight = 140 };
-    private readonly TextBlock _status = new() { Foreground = System.Windows.Media.Brushes.Firebrick, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _status = new() { Foreground = ThemeManager.Error, TextWrapping = TextWrapping.Wrap };
     private readonly Button _awareness = new() { Content = "_Consapevolezza…" }, _assess = new() { Content = "_Valutazione…" },
                             _action = new() { Content = "_Registra azione…" }, _close = new() { Content = "C_hiudi incidente" };
     private IncidentDetail? _detail;
@@ -52,7 +52,7 @@ public sealed class IncidentDetailWindow : Window
     public IncidentDetailWindow(AppServices s, Guid userId, Guid incidentId)
     {
         _s = s; _user = userId; _id = incidentId;
-        Title = "Incidente"; Width = 760; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        FontSize = 14; Title = "Incidente"; Width = 760; SizeToContent = SizeToContent.Height; MaxHeight = 760; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
         foreach (var b in new[] { _awareness, _assess, _action, _close }) { b.Margin = new Thickness(0, 0, 8, 0); b.Padding = new Thickness(12, 6, 12, 6); buttons.Children.Add(b); }
         var panel = new StackPanel { Margin = new Thickness(16) };
