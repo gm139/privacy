@@ -75,4 +75,25 @@ public sealed class SubjectService
             r.IsDBNull(4) ? null : DateOnly.FromDateTime(r.GetDateTime(4)), r.IsDBNull(5) ? null : r.GetString(5),
             r.IsDBNull(6) ? null : r.GetString(6), r.IsDBNull(7) ? null : r.GetString(7), r.GetString(8));
     }
+
+    /// <summary>Ricerca per nome, cognome o codice interno (senza distinguere maiuscole). Gli interessati rimossi restano in elenco, anonimi.</summary>
+    public async Task<IReadOnlyList<SubjectRecord>> SearchAsync(Guid practiceId, string? text, int limit = 200, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand("""
+            SELECT id, internal_code, first_name, last_name, birth_date, tax_code, email, phone, status_code FROM ps.data_subjects
+            WHERE practice_id = $1 AND ($2::text IS NULL OR (first_name || ' ' || last_name) ILIKE '%' || $2 || '%' OR internal_code ILIKE '%' || $2 || '%')
+            ORDER BY last_name, first_name LIMIT $3
+            """, conn);
+        cmd.Parameters.AddWithValue(practiceId);
+        cmd.Parameters.AddWithValue(string.IsNullOrWhiteSpace(text) ? DBNull.Value : text.Trim());
+        cmd.Parameters.AddWithValue(limit);
+        var list = new List<SubjectRecord>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            list.Add(new SubjectRecord(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetString(3),
+                r.IsDBNull(4) ? null : DateOnly.FromDateTime(r.GetDateTime(4)), r.IsDBNull(5) ? null : r.GetString(5),
+                r.IsDBNull(6) ? null : r.GetString(6), r.IsDBNull(7) ? null : r.GetString(7), r.GetString(8)));
+        return list;
+    }
 }

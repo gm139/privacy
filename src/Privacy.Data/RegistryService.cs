@@ -10,6 +10,8 @@ public sealed record ActivityExport(string Code, string Name, int VersionNumber,
     DateOnly? ReviewDueOn, IReadOnlyList<PurposeExport> Purposes, IReadOnlyList<string> DataCategories,
     IReadOnlyList<string> SubjectCategories, IReadOnlyList<string> RecipientCategories);
 
+public sealed record PublishedActivity(Guid VersionId, string Code, string Name, int VersionNumber);
+
 /// <summary>Un'altra operazione ha modificato la stessa riga: ricaricare e riprovare (T15).</summary>
 public sealed class ConcurrencyConflictException : Exception
 {
@@ -205,6 +207,21 @@ public sealed class RegistryService
                 await Codes(conn, "activity_recipient_categories", v.Id, ct)));
         }
         return result;
+    }
+
+    /// <summary>Versioni di attività pubblicate (in vigore): servono per collegare un'informativa al registro.</summary>
+    public async Task<IReadOnlyList<PublishedActivity>> ListPublishedAsync(Guid practiceId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand("""
+            SELECT v.id, a.code, a.name, v.version_number FROM ps.activity_versions v JOIN ps.processing_activities a ON a.id = v.activity_id
+            WHERE a.practice_id = $1 AND v.status_code = 'published' ORDER BY a.code
+            """, conn);
+        cmd.Parameters.AddWithValue(practiceId);
+        var list = new List<PublishedActivity>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct)) list.Add(new PublishedActivity(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetInt32(3)));
+        return list;
     }
 
     private static async Task<IReadOnlyList<string>> Codes(NpgsqlConnection conn, string table, Guid versionId, CancellationToken ct)

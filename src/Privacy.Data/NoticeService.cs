@@ -12,6 +12,9 @@ public sealed record DeliveryRendering(Guid DeliveryId, string DeliveryCode, str
     public bool Matches => StoredHmac.AsSpan().SequenceEqual(RecomputedHmac);
 }
 
+public sealed record PublishedNotice(Guid VersionId, string Title, int VersionNumber, DateOnly? EffectiveFrom);
+public sealed record DeliveryRow(Guid Id, string DeliveryCode, DateTimeOffset? DeliveredAt, string ChannelCode, string ReceiptStatusCode, string Title, int VersionNumber);
+
 /// <summary>Flusso F02: informative (versioni approvate e pubblicate) e registro delle consegne.</summary>
 public sealed class NoticeService
 {
@@ -131,5 +134,36 @@ public sealed class NoticeService
         var text = NoticeDocument.Render(new NoticeRenderInput(r.GetString(1), r.GetInt32(2), code, r.GetString(3),
             date, r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetString(6)));
         return new DeliveryRendering(deliveryId, code, text, r.GetFieldValue<byte[]>(7), NoticeDocument.Hmac(hmacKey, text));
+    }
+
+    public async Task<IReadOnlyList<PublishedNotice>> ListPublishedAsync(Guid practiceId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand("""
+            SELECT dv.id, d.title, dv.version_number, dv.effective_from FROM ps.document_versions dv JOIN ps.documents d ON d.id = dv.document_id
+            WHERE d.practice_id = $1 AND d.type_code = 'notice' AND dv.status_code = 'published' ORDER BY d.title, dv.version_number DESC
+            """, conn);
+        cmd.Parameters.AddWithValue(practiceId);
+        var list = new List<PublishedNotice>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            list.Add(new PublishedNotice(r.GetGuid(0), r.GetString(1), r.GetInt32(2), r.IsDBNull(3) ? null : DateOnly.FromDateTime(r.GetDateTime(3))));
+        return list;
+    }
+
+    public async Task<IReadOnlyList<DeliveryRow>> ListDeliveriesAsync(Guid subjectId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand("""
+            SELECT n.id, n.delivery_code, n.delivered_at, n.channel_code, n.receipt_status_code, d.title, dv.version_number
+            FROM ps.notice_deliveries n JOIN ps.document_versions dv ON dv.id = n.document_version_id JOIN ps.documents d ON d.id = dv.document_id
+            WHERE n.subject_id = $1 ORDER BY COALESCE(n.delivered_at, n.created_at) DESC
+            """, conn);
+        cmd.Parameters.AddWithValue(subjectId);
+        var list = new List<DeliveryRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            list.Add(new DeliveryRow(r.GetGuid(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetFieldValue<DateTimeOffset>(2), r.GetString(3), r.GetString(4), r.GetString(5), r.GetInt32(6)));
+        return list;
     }
 }

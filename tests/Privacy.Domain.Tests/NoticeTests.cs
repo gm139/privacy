@@ -13,6 +13,9 @@ public class NoticeTests
     [Fact] public void Resolve_UnknownVariable_Throws()
         => Assert.Throws<TemplateException>(() => TemplateResolver.Resolve("{{password}}", Values));
 
+    [Fact] public void Resolve_PendingGuidance_Throws()
+        => Assert.Throws<TemplateException>(() => TemplateResolver.Resolve("Titolare {{practice_name}}. [Completare: finalità]", Values));
+
     [Fact] public void Resolve_MissingValue_Throws()
         => Assert.Throws<TemplateException>(() => TemplateResolver.Resolve("{{phone}}", Values));
 

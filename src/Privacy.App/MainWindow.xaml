@@ -39,6 +39,44 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
+            <TabItem Header="Pazienti">
+                <DockPanel Margin="0,8,0,0">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Label Content="_Cerca" Target="{Binding ElementName=SearchBox}" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SearchBox" Width="220" TabIndex="10" TextChanged="OnSearchChanged" AutomationProperties.Name="Cerca interessato"/>
+                        <Button Content="Nuo_vo interessato…" Click="OnNewSubject" Margin="12,0,0,0" TabIndex="11"/>
+                        <Button Content="_Rettifica…" Click="OnRectifySubject" Margin="8,0,0,0" TabIndex="12"/>
+                        <Button Content="Consegna _informativa…" Click="OnDeliver" Margin="8,0,0,0" TabIndex="13"/>
+                        <Button Content="Cons_egne…" Click="OnHistory" Margin="8,0,0,0" TabIndex="14"/>
+                        <Button Content="Ri_muovi…" Click="OnRemoveSubject" Margin="8,0,0,0" TabIndex="15"/>
+                    </StackPanel>
+                    <DataGrid x:Name="SubjectsGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single"
+                              AutomationProperties.Name="Interessati" MouseDoubleClick="OnHistory">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Codice" Binding="{Binding Code}" Width="110"/>
+                            <DataGridTextColumn Header="Cognome" Binding="{Binding Last}" Width="200"/>
+                            <DataGridTextColumn Header="Nome" Binding="{Binding First}" Width="200"/>
+                            <DataGridTextColumn Header="Nato il" Binding="{Binding Birth}" Width="110"/>
+                            <DataGridTextColumn Header="Stato" Binding="{Binding Status}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="Informative">
+                <DockPanel Margin="0,8,0,0">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="Nuova _informativa…" Click="OnNewNotice" TabIndex="20"/>
+                    </StackPanel>
+                    <DataGrid x:Name="NoticesGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column"
+                              AutomationProperties.Name="Informative pubblicate">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Titolo" Binding="{Binding Title}" Width="*"/>
+                            <DataGridTextColumn Header="Versione" Binding="{Binding Version}" Width="100"/>
+                            <DataGridTextColumn Header="In vigore dal" Binding="{Binding From}" Width="140"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

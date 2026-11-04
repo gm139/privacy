@@ -10,6 +10,13 @@ public sealed class AppServices
     public AuthService Auth { get; }
     public RightsRequestService Requests { get; }
     public IncidentService Incidents { get; }
+    public SubjectService Subjects { get; }
+    public NoticeService Notices { get; }
+    public RegistryService Registry { get; }
+    public CatalogService Catalog { get; }
+    private byte[]? _hmacKey;
+    /// <summary>Chiave dei moduli, letta (o creata) al primo uso.</summary>
+    public byte[] HmacKey => _hmacKey ??= KeyStore.GetOrCreateHmacKey();
 
     public AppServices(string connectionString)
     {
@@ -17,6 +24,10 @@ public sealed class AppServices
         Auth = new AuthService(Db);
         Requests = new RightsRequestService(Db);
         Incidents = new IncidentService(Db);
+        Subjects = new SubjectService(Db);
+        Notices = new NoticeService(Db);
+        Registry = new RegistryService(Db);
+        Catalog = new CatalogService(Db);
     }
 
     public static string? ReadConnectionString()

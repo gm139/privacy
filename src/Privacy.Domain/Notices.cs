@@ -20,7 +20,11 @@ public static class TemplateResolver
 
     private static readonly Regex Placeholder = new(@"\{\{\s*([A-Za-z0-9_]+)\s*\}\}", RegexOptions.Compiled);
 
+    /// <summary>Le parti guida «[Completare: ...]» del testo di partenza non devono arrivare in un documento pubblicato.</summary>
+    public static bool HasPendingGuidance(string text) => text.Contains("[Completare", StringComparison.OrdinalIgnoreCase);
+
     public static string Resolve(string template, IReadOnlyDictionary<string, string> values) =>
+        HasPendingGuidance(template) ? throw new TemplateException("restano parti guida «[Completare...]» da sostituire") :
         Placeholder.Replace(template, m =>
         {
             var name = m.Groups[1].Value;

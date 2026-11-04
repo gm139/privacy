@@ -11,7 +11,8 @@ public sealed class CatalogService
     {
         "cat_right", "cat_request_channel", "cat_requester_capacity", "cat_request_outcome",
         "cat_incident_classification", "cat_incident_action_type", "cat_risk_level",
-        "cat_notification_decision", "cat_subject_comm_decision", "cat_data_category"
+        "cat_notification_decision", "cat_subject_comm_decision", "cat_data_category",
+        "cat_delivery_channel", "cat_receipt_status"
     };
     private readonly Db _db;
     public CatalogService(Db db) => _db = db;

@@ -147,4 +147,23 @@ public class NoticeTests
         }
         await Assert.ThrowsAsync<PostgresException>(() => x.Notices.RecordDeliveryAsync(Delivery(x, nv, minor, rep: rep, sig: "Marta Bianchi"), Key));
     }
+
+    [Fact]
+    public async Task Lists_PublishedNotices_ActivitiesAndDeliveries_AndSubjectSearch()
+    {
+        if (Conn is null) return;
+        var x = await SetupAsync();
+        var nv = await PublishedNotice(x);
+        var s = await NewSubject(x, "Anna", "Verdi");
+        await x.Notices.RecordDeliveryAsync(Delivery(x, nv, s), Key);
+        var notice = (await x.Notices.ListPublishedAsync(x.Practice)).Single();
+        Assert.Equal(("Informativa pazienti", 1), (notice.Title, notice.VersionNumber));
+        Assert.Single(await new RegistryService(x.Db).ListPublishedAsync(x.Practice));
+        var delivery = (await x.Notices.ListDeliveriesAsync(s)).Single();
+        Assert.Equal("delivered_unsigned", delivery.ReceiptStatusCode);
+        var subjects = new SubjectService(x.Db);
+        Assert.Single(await subjects.SearchAsync(x.Practice, "verd"));
+        Assert.Empty(await subjects.SearchAsync(x.Practice, "nessuno-con-questo-nome"));
+        Assert.Single(await subjects.SearchAsync(x.Practice, null));
+    }
 }

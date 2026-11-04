@@ -60,6 +60,58 @@ internal static class SmokeTest
         await main.LoadAsync();
         Console.WriteLine($"dopo inserimenti: richieste={main.RequestCount} incidenti={main.IncidentCount}");
         ok &= main.RequestCount == 2 && main.IncidentCount == 2;
+
+        // F02: registro attività pubblicato -> informativa -> interessato -> consegna -> storico -> rimozione
+        var v = await s.Registry.CreateActivityAsync(Guid.NewGuid(), practice, userId, "A1", "Cura dei pazienti");
+        await s.Registry.UpdateDraftAsync(v, userId, "Cartella clinica", new DateOnly(2027, 11, 1));
+        await s.Registry.AddPurposeAsync(v, userId, "Cura", "Terapia", "Art. 9(2)(h)", "not_required", new[] { new GroundExport("contract", "health_care", null, "Cura") });
+        await s.Registry.SetCategoriesAsync(v, userId, new[] { "identification", "health_relation" }, new[] { "patients" }, new[] { "none_internal" });
+        await s.Registry.SubmitForReviewAsync(v, userId);
+        int rv;
+        await using (var c = await s.Db.OpenAsync())
+        {
+            await using var q = new NpgsqlCommand("SELECT row_version FROM ps.activity_versions WHERE id = $1", c);
+            q.Parameters.AddWithValue(v);
+            rv = (int)(await q.ExecuteScalarAsync())!;
+        }
+        await s.Registry.PublishAsync(Guid.NewGuid(), v, userId, new DateOnly(2026, 6, 1), rv);
+
+        var nn = new NewNoticeWindow(s, practice, userId, await s.Registry.ListPublishedAsync(practice));
+        nn.Activities[0].Box.IsChecked = true;
+        if (await nn.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: testo di partenza con parti da completare pubblicato"); return 15; }
+        nn.Body.Text = "Titolare {{controller_name}}, {{address}}. Contatti {{privacy_contact}}. Versione {{document_version}} dal {{effective_date}}.";
+        if (!await nn.RunSubmitAsync() || nn.CreatedVersionId is null) { Console.Error.WriteLine("SMOKE FAIL: pubblicazione informativa"); return 16; }
+
+        var sf = new SubjectFormWindow(s, practice, userId, null);
+        sf.First.Text = "Anna"; sf.Last.Text = "Verdi (smoke)";
+        if (!await sf.RunSubmitAsync() || sf.CreatedId is null) { Console.Error.WriteLine("SMOKE FAIL: nuovo interessato"); return 17; }
+        var subject = (await s.Subjects.GetAsync(sf.CreatedId.Value))!;
+
+        var dw = new DeliveryWindow(s, userId, subject, await s.Notices.ListPublishedAsync(practice), await cat.GetAsync("cat_delivery_channel"), await cat.GetAsync("cat_receipt_status"));
+        dw.Receipt.SelectedValue = "delivered_unsigned";
+        if (!await dw.RunSubmitAsync() || dw.CreatedCode is null) { Console.Error.WriteLine("SMOKE FAIL: consegna"); return 18; }
+        Console.WriteLine("consegna: " + dw.CreatedCode);
+
+        var hw = new DeliveriesHistoryWindow(s, subject);
+        hw.Show(); await hw.LoadAsync();
+        ok &= hw.Count == 1;
+        hw.Close();
+        var delivery = (await s.Notices.ListDeliveriesAsync(subject.Id)).Single();
+        var rebuilt = await s.Notices.ReconstructAsync(delivery.Id, s.HmacKey);
+        Console.WriteLine("integrità prima della rimozione: " + rebuilt.Matches);
+        ok &= rebuilt.Matches;
+
+        var rm = new RemoveSubjectWindow(s, userId, subject);
+        rm.Reason.Text = "Valutazione del titolare (smoke)";
+        if (await rm.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: rimozione senza conferma"); return 19; }
+        rm.Confirm.Text = "RIMUOVI";
+        if (!await rm.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: rimozione"); return 20; }
+        var after = await s.Notices.ReconstructAsync(delivery.Id, s.HmacKey);
+        Console.WriteLine("integrità dopo la rimozione: " + after.Matches);
+        ok &= !after.Matches && (await s.Subjects.GetAsync(subject.Id))!.StatusCode == "removed";
+        await main.LoadAsync();
+        Console.WriteLine($"pazienti={main.SubjectCount} informative={main.NoticeCount}");
+        ok &= main.SubjectCount == 1 && main.NoticeCount == 1;
         main.Close(); login.Close();
         Console.WriteLine(ok ? "SMOKE OK" : "SMOKE FAIL: conteggi");
         return ok ? 0 : 11;
