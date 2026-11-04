@@ -134,7 +134,10 @@ begin
   BackupPage.Add('Cartella dei backup sul computer:');
   BackupPage.Add('Copia esterna (consigliata):');
   BackupPage.Values[0] := ExpandConstant('{userdocs}\Backup Privacy Studio');
-  BackupPage.Values[1] := '';
+  BackupPage.Values[1] := ExpandConstant('{param:EXTERNALDIR|}');
+  { installazioni non interattive (assistenza tecnica): /PGPASSWORD=... /EXTERNALDIR=... }
+  PgPage.Values[0] := ExpandConstant('{param:PGPASSWORD|}');
+  if not PgExists then PgPage.Values[1] := PgPage.Values[0];
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
