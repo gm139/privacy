@@ -147,6 +147,7 @@ Registrare; contenere; valutare se riguarda dati personali; distinguere scoperta
 **Accettazione:** un incidente di sola indisponibilità può essere classificato come violazione; la notifica è registrata solo con protocollo e ricevuta inseriti dopo l'invio effettivo; il conto delle 72 ore usa istanti (corretto anche con cambio d'ora).
 
 ### F05 — Conservazione e cancellazione (v1 manuale)
+Implementazione: migrazione `db/004_disposal_ledger.sql`. Ogni eliminazione scrive in `disposal_items` solo tipo e identificativo dell'elemento; l'applicazione ne tiene una **copia fuori dal database** (file accodato, da conservare con i backup, in luogo separato) perché un ripristino da backup più vecchio riporterebbe anche i `disposal_records` più recenti. La procedura `dispose_item` elimina fisicamente (richieste e incidenti solo se chiusi) ed è l'unico modo: il ruolo operativo non cancella direttamente dalle tabelle di eventi.
 L'app elenca elementi in scadenza con motivo e dipendenze; il titolare autorizza; l'operazione elimina record, allegati e copie gestite, e registra un `disposal_record` che non ricrea i dati. I backup hanno rotazione propria; dopo un ripristino un'apposita procedura riapplica le cancellazioni già registrate.
 
 **Accettazione:** dopo un ripristino da backup precedente a una cancellazione, i dati cancellati non tornano visibili (la procedura riapplica i `disposal_records`).
