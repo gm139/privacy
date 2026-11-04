@@ -115,6 +115,14 @@ public class DialogForm : Window
         throw new FormatException($"Selezionare un valore: {name}.");
     }
 
+    /// <summary>Aggiunge un controllo già costruito (es. PasswordBox) con la sua etichetta.</summary>
+    public void AddControl(string label, Control control)
+    {
+        control.TabIndex = _tab++;
+        System.Windows.Automation.AutomationProperties.SetName(control, label.Replace("_", ""));
+        _fields.Children.Add(Lbl(label, control)); _fields.Children.Add(control);
+    }
+
     public ComboBox AddCombo(string label, IEnumerable<CatalogItem> items)
     {
         var box = new ComboBox { ItemsSource = items.ToList(), DisplayMemberPath = nameof(CatalogItem.Label), SelectedValuePath = nameof(CatalogItem.Code), TabIndex = _tab++ };

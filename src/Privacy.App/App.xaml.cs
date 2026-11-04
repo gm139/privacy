@@ -27,8 +27,10 @@ public partial class App : Application
             var practice = await services.GetPracticeIdAsync();
             if (practice is null)
             {
-                MessageBox.Show("Studio non configurato.", "Privacy Studio", MessageBoxButton.OK, MessageBoxImage.Warning);
-                Shutdown(3); return;
+                // primo avvio: configurazione dello studio e del primo utente
+                var setup = new SetupWindow(services);
+                if (setup.ShowDialog() != true || setup.Result is null) { Shutdown(3); return; }
+                practice = setup.Result.Value.PracticeId;
             }
             var login = new LoginWindow(services, practice.Value);
             if (login.ShowDialog() != true || login.Result is not { UserId: not null } r) { Shutdown(0); return; }

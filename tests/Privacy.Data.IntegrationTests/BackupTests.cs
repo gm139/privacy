@@ -221,4 +221,29 @@ public class BackupRestoreTests
             Directory.Delete(root, true);
         }
     }
+
+    /// <summary>Installazione da zero: database vuoto + migrazioni 000-004 + prima configurazione + primo accesso.</summary>
+    [Fact]
+    public async Task FreshInstall_Migrations_FirstSetup_ThenLogin_AndSecondSetupIsRefused()
+    {
+        if (Conn is null) return;
+        var name = "privacy_fresh_" + Guid.NewGuid().ToString("N")[..8];
+        Docker("", "exec", Container, "psql", "-U", "postgres", "-qc", $"CREATE DATABASE {name}");
+        try
+        {
+            Docker(File.ReadAllText(RepoFile("db/000_bootstrap_roles.sql")), "exec", "-i", Container, "psql", "-U", "postgres", "-d", name, "-q", "-v", "ON_ERROR_STOP=1");
+            foreach (var f in new[] { "001_schema_v1.sql", "002_catalogs.sql", "003_rules_and_grants.sql", "004_disposal_ledger.sql" })
+                Docker(File.ReadAllText(RepoFile("db/" + f)), "exec", "-i", Container, "psql", "-U", "privacy_migrator", "-d", name, "-q", "-v", "ON_ERROR_STOP=1");
+            var db = new Db(new NpgsqlConnectionStringBuilder(Conn) { Database = name, Pooling = false }.ConnectionString);
+            var setup = new SetupService(db);
+            Assert.False(await setup.IsConfiguredAsync());
+            var (practice, user) = await setup.CreateFirstAsync(new PracticeInput("Studio Rossi", "Dott. Mario Rossi", null, "Via Roma 1, Brescia", "privacy@example.test", null, null),
+                "medico", "Dott. Rossi", "una password lunga e valida");
+            Assert.True(await setup.IsConfiguredAsync());
+            var login = await new AuthService(db).LoginAsync(practice, "medico", "una password lunga e valida");
+            Assert.Equal((LoginOutcome.Success, user), (login.Outcome, login.UserId!.Value));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => setup.CreateFirstAsync(new PracticeInput("Altro", "X", null, "Via", "p@example.test", null, null), "altro", "Altro", "un'altra password lunga"));
+        }
+        finally { Docker("", "exec", Container, "psql", "-U", "postgres", "-qc", $"DROP DATABASE IF EXISTS {name} WITH (FORCE)"); }
+    }
 }

@@ -121,4 +121,14 @@ public class AuthTests
         var (auth, practice, _) = await SetupAsync();
         await Assert.ThrowsAsync<ArgumentException>(() => auth.CreateUserAsync(practice, "altro", "Altro", "corta"));
     }
+
+    [Fact]
+    public async Task Setup_WeakPassword_CreatesNothing()
+    {
+        if (Conn is null) return;
+        var setup = new SetupService(new Db(Conn));
+        var before = await Count("SELECT count(*) FROM ps.practices");
+        await Assert.ThrowsAsync<ArgumentException>(() => setup.CreateFirstAsync(new PracticeInput("S", "T", null, "Via 1", "p@example.test", null, null), "medico", "Dott.", "corta"));
+        Assert.Equal(before, await Count("SELECT count(*) FROM ps.practices"));   // nessuno studio creato se la password non va bene
+    }
 }
