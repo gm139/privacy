@@ -149,4 +149,76 @@ public class BackupRestoreTests
         Assert.True(await Count(db, "SELECT count(*) FROM ps.backup_runs WHERE status_code = 'failed' AND error_code IS NOT NULL") >= 1);
         Assert.False(Directory.Exists(Path.Combine(root, "primary")) && Directory.GetFiles(Path.Combine(root, "primary")).Length > 0);
     }
+
+    private static string AdminConn => Environment.GetEnvironmentVariable("PRIVACY_TEST_ADMIN_CONN") ?? "Host=127.0.0.1;Port=55432;Database=postgres;Username=postgres;Password=x";
+
+    [Fact]
+    public async Task RestoreService_RestoresIntoNewDatabase_ReappliesDisposals_RecordsTest_AndNeverOverwrites()
+    {
+        if (Conn is null) return;
+        var (db, practice, user) = await SetupAsync();
+        var root = Path.Combine(Path.GetTempPath(), "privacy-rs-" + Guid.NewGuid().ToString("N"));
+        var ledgerPath = Path.Combine(root, "ledger", "disposals.jsonl");
+        var requests = new RightsRequestService(db);
+        var id = await requests.RegisterAsync(new RegisterRequestCommand(Guid.NewGuid(), practice, user, null, "Carla (collab.)", "other", "email", DateTimeOffset.UtcNow, "Copia", new[] { "access" }));
+        await requests.DecideAsync(Guid.NewGuid(), id, user, "access", "granted", null, DateTimeOffset.UtcNow);
+        await requests.CloseAsync(Guid.NewGuid(), id, user);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(ledgerPath)!); File.WriteAllText(ledgerPath, "");
+        var backup = new BackupService(db, Tools(), Path.Combine(root, "primary"), Path.Combine(root, "external"), ledgerPath);
+        var result = await backup.BackupAsync(Key, "k1");
+        Assert.True(await new DisposalService(db, new DisposalLedger(ledgerPath)).DisposeAsync(Guid.NewGuid(), "rights_request", id, user, "Durata trascorsa"));
+        // copia aggiornata del registro (come farebbe un backup successivo)
+        File.Copy(ledgerPath, result.ExternalPath + ".ledger.jsonl", overwrite: true);
+
+        var target = "privacy_rs_" + Guid.NewGuid().ToString("N")[..8];
+        try
+        {
+            var report = await RestoreService.RestoreAsync(new RestoreRequest(result.ExternalPath!, Key, "k1", AdminConn, target,
+                result.ExternalPath + ".ledger.jsonl", Tools(restoreInto: target)));
+            Assert.True(report.Clean, string.Join("; ", report.DisposalsToCheck) + " audit=" + report.AuditChainBrokenAtId);
+            Assert.True(report.DisposalsReapplied >= 1);
+            Assert.True(report.RestoreTestRecorded);
+
+            var restored = new Db(new NpgsqlConnectionStringBuilder(AdminConn) { Database = target }.ConnectionString);
+            Assert.Equal(0, await Count(restored, "SELECT count(*) FROM ps.rights_requests WHERE id = $1", id));          // T25
+            Assert.Equal(1, await Count(restored, "SELECT count(*) FROM ps.restore_tests WHERE outcome_code = 'ok'"));      // T24
+            Assert.Equal(1, await Count(restored, "SELECT count(*) FROM ps.disposal_items WHERE item_id = $1", id));
+
+            // non sovrascrive mai un database esistente
+            await Assert.ThrowsAsync<InvalidOperationException>(() => RestoreService.RestoreAsync(new RestoreRequest(result.ExternalPath!, Key, "k1", AdminConn, target, null, Tools(restoreInto: target))));
+            // chiave errata: rifiutato prima di creare qualunque database
+            var other = "privacy_rs_" + Guid.NewGuid().ToString("N")[..8];
+            await Assert.ThrowsAsync<BackupFormatException>(() => RestoreService.RestoreAsync(new RestoreRequest(result.ExternalPath!, new byte[32], "k1", AdminConn, other, null, Tools(restoreInto: other))));
+            Assert.Equal(0, await Count(new Db(AdminConn), "SELECT count(*) FROM pg_database WHERE datname = $1", other));
+            // nome non valido (iniezione): rifiutato
+            await Assert.ThrowsAsync<ArgumentException>(() => RestoreService.RestoreAsync(new RestoreRequest(result.ExternalPath!, Key, "k1", AdminConn, "x\"; DROP DATABASE privacy; --", null, Tools())));
+        }
+        finally
+        {
+            Docker("", "exec", Container, "psql", "-U", "postgres", "-qc", $"DROP DATABASE IF EXISTS {target} WITH (FORCE)");
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public async Task RestoreService_WithoutLedger_IsNotReportedAsClean()
+    {
+        if (Conn is null) return;
+        var (db, _, _) = await SetupAsync();
+        var root = Path.Combine(Path.GetTempPath(), "privacy-rs-" + Guid.NewGuid().ToString("N"));
+        var result = await new BackupService(db, Tools(), Path.Combine(root, "p"), null).BackupAsync(Key, "k1");
+        var target = "privacy_rs_" + Guid.NewGuid().ToString("N")[..8];
+        try
+        {
+            var report = await RestoreService.RestoreAsync(new RestoreRequest(result.PrimaryPath, Key, "k1", AdminConn, target, null, Tools(restoreInto: target)));
+            Assert.False(report.Clean);                 // senza registro esterno non si può dire che nulla sia tornato
+            Assert.False(report.LedgerProvided);
+        }
+        finally
+        {
+            Docker("", "exec", Container, "psql", "-U", "postgres", "-qc", $"DROP DATABASE IF EXISTS {target} WITH (FORCE)");
+            Directory.Delete(root, true);
+        }
+    }
 }

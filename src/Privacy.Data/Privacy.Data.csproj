@@ -14,4 +14,7 @@
     <ProjectReference Include="..\Privacy.Domain\Privacy.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\db\000_bootstrap_roles.sql" LogicalName="000_bootstrap_roles.sql" />
+  </ItemGroup>
 </Project>

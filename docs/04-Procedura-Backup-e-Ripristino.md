@@ -39,21 +39,28 @@ Le chiavi dei backup e dei moduli sono sul PC, protette da Windows (DPAPI) e leg
 
 Questa è una soluzione provvisoria in attesa della decisione D-ENC.
 
-## 5. Ripristino su una macchina pulita (da provare)
+## 5. Ripristino su una macchina pulita (da provare su Windows)
 
-1. Installare PostgreSQL e l'applicazione; creare un database vuoto, ad es. `privacy`.
-2. Come amministratore del database eseguire `db/000_bootstrap_roles.sql` nel database vuoto (crea i ruoli e i permessi di connessione; impostare le password dei ruoli).
-3. Reinstallare le chiavi (§4, «Importa chiavi…») e copiare in una cartella il file `.psbk` scelto e il suo `.ledger.jsonl`.
-4. Decifrare il backup e ripristinarlo con `pg_restore` (ruolo amministratore, database `privacy`). *Manca ancora uno strumento a riga di comando per decifrare e ripristinare in un passo: oggi la decifratura è nel codice (`BackupService.RestoreAsync`) e nei test; va esposta prima del rilascio.*
-5. Copiare il `.ledger.jsonl` più recente al percorso `ledgerPath`.
-6. **Eseguire `Privacy.App.exe --reapply-disposals`**: rielimina ciò che il backup ha riportato e che era già stato cancellato. Il messaggio finale riporta quanti elementi sono stati rieliminati e quanti richiedono controllo manuale (es. una richiesta ancora aperta nella copia).
-7. Accedere, controllare i dati e registrare la prova (backup di riferimento, data, esito).
+Il ripristino crea sempre un database **nuovo**: se il nome esiste già, si rifiuta.
 
-Finché il punto 6 non è stato eseguito, i dati cancellati dopo il backup sono di nuovo visibili: **non** riprendere l'uso normale prima.
+1. Installare PostgreSQL (compresi gli strumenti `pg_restore`) e l'applicazione. Indicare `pgBinDir` in `config.json`.
+2. Reinstallare le chiavi (§4, «Importa chiavi…»). Senza le chiavi il file non si apre.
+3. Copiare in una cartella il file `.psbk` scelto e, accanto, il suo `.ledger.jsonl` (registro delle eliminazioni).
+4. Da un terminale, con l'amministratore del database nella variabile d'ambiente (non sulla riga di comando):
+
+   ```
+   set PRIVACY_ADMIN_CONN=Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=...
+   Privacy.App.exe --restore "D:\Ripristino\privacy-....psbk" --database privacy [--ledger "D:\...\disposals.jsonl"]
+   ```
+
+   Il programma, in quest'ordine: verifica che il file si decifri; crea il database e i ruoli dello schema; ripristina i dati; **rielimina ciò che il backup ha riportato** usando il registro esterno; controlla la catena di audit; registra la prova di ripristino. Alla fine mostra un riepilogo: esito pieno solo se la catena di audit è integra, non ci sono eliminazioni da verificare a mano e il registro esterno è stato fornito.
+5. Impostare le password dei ruoli `privacy_app` e `privacy_migrator` (non sono nel backup), puntare l'applicazione al nuovo database e controllare i dati.
+
+Se il registro esterno non è stato fornito, i dati cancellati dopo il backup possono essere tornati visibili: il riepilogo lo segnala e **non** va ripresa l'attività normale prima di averlo recuperato ed eseguito `Privacy.App.exe --reapply-disposals`.
 
 ## 6. Limiti noti
 
 - Backup manuale, senza pianificazione.
 - Il file di backup è trattato in memoria (adatto a database di dimensioni di studio; per volumi grandi serve la cifratura a flusso).
 - Il registro esterno delle eliminazioni non è cifrato né firmato: contiene solo identificativi, ma va protetto da cancellazione accidentale (è copiato con ogni backup).
-- Il ripristino a riga di comando (punto 4) e la prova su Windows pulito sono ancora da completare.
+- Il ripristino è provato in Docker (database di prova); la prova su Windows pulito, con PostgreSQL e `pg_restore` veri, resta da fare.
