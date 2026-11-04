@@ -23,7 +23,7 @@ public sealed class NewNoticeWindow : DialogForm
 
     public NewNoticeWindow(AppServices s, Guid practiceId, Guid userId, IReadOnlyList<PublishedActivity> activities) : base("Nuova informativa", 640)
     {
-        var createCmd = Guid.NewGuid(); var publishCmd = Guid.NewGuid();
+        var command = Guid.NewGuid();
         Title_ = AddText("_Titolo", "Informativa ai pazienti");
         Body = AddText("_Testo (modificabile)", StarterText, multiline: true);
         Body.MinHeight = 260;
@@ -41,9 +41,7 @@ public sealed class NewNoticeWindow : DialogForm
             if (linked.Count == 0) return "Selezionare almeno un'attività del registro (deve essere pubblicata).";
             try
             {
-                var v = await s.Notices.CreateDraftAsync(createCmd, practiceId, userId, Title_.Text.Trim(), Body.Text);
-                await s.Notices.PublishAsync(publishCmd, v, userId, DateOnly.FromDateTime(d), linked, s.HmacKey);
-                CreatedVersionId = v;
+                CreatedVersionId = await s.Notices.CreateAndPublishAsync(command, practiceId, userId, Title_.Text.Trim(), Body.Text, DateOnly.FromDateTime(d), linked, s.HmacKey);
             }
             catch (TemplateException e) { return "Testo non pubblicabile: " + e.Message + "."; }
             return null;

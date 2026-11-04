@@ -166,4 +166,24 @@ public class NoticeTests
         Assert.Empty(await subjects.SearchAsync(x.Practice, "nessuno-con-questo-nome"));
         Assert.Single(await subjects.SearchAsync(x.Practice, null));
     }
+
+    [Fact]
+    public async Task CreateAndPublish_UnpublishableText_LeavesNoOrphanDraft_AndCorrectedRetryWorks()
+    {
+        if (Conn is null) return;
+        var x = await SetupAsync();
+        var cmd = Guid.NewGuid();
+        await Assert.ThrowsAsync<TemplateException>(() => x.Notices.CreateAndPublishAsync(cmd, x.Practice, x.User, "Informativa", "Testo [Completare: tutto]",
+            new DateOnly(2026, 6, 1), new[] { x.ActivityVersion }, Key));
+        await using (var c = await x.Db.OpenAsync())
+        {
+            await using var q = new NpgsqlCommand("SELECT count(*) FROM ps.documents WHERE practice_id = $1", c);
+            q.Parameters.AddWithValue(x.Practice);
+            Assert.Equal(0L, (long)(await q.ExecuteScalarAsync())!);   // nessuna bozza orfana
+        }
+        // lo stesso comando, con testo corretto, ora funziona (il comando fallito non è stato registrato)
+        var v = await x.Notices.CreateAndPublishAsync(cmd, x.Practice, x.User, "Informativa", "Titolare {{controller_name}}", new DateOnly(2026, 6, 1), new[] { x.ActivityVersion }, Key);
+        Assert.Equal(v, await x.Notices.CreateAndPublishAsync(cmd, x.Practice, x.User, "Informativa", "Titolare {{controller_name}}", new DateOnly(2026, 6, 1), new[] { x.ActivityVersion }, Key));
+        Assert.Single(await x.Notices.ListPublishedAsync(x.Practice));
+    }
 }

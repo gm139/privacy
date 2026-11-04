@@ -27,9 +27,7 @@ public sealed class NoticeService
         await using var conn = await _db.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "create_notice", ct) is { } existing) return existing;
-        var doc = (Guid)(await Scalar(conn, tx, "INSERT INTO ps.documents (practice_id, type_code, title, created_by) VALUES ($1,'notice',$2,$3) RETURNING id", ct, practiceId, title, actorId))!;
-        var v = (Guid)(await Scalar(conn, tx, "INSERT INTO ps.document_versions (document_id, version_number, language_code, body, created_by) VALUES ($1,1,'it',$2,$3) RETURNING id", ct, doc, templateBody, actorId))!;
-        await Audit(conn, tx, actorId, "notice.create", "document_version", v, ct);
+        var v = await InsertDraft(conn, tx, practiceId, actorId, title, templateBody, ct);
         await SetResult(conn, tx, commandId, v, ct);
         await tx.CommitAsync(ct);
         return v;
@@ -45,7 +43,36 @@ public sealed class NoticeService
         await using var conn = await _db.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "publish_notice", ct) is not null) return;
+        await PublishCore(conn, tx, versionId, approverId, effectiveFrom, activityVersionIds, hmacKey, ct);
+        await SetResult(conn, tx, commandId, versionId, ct);
+        await tx.CommitAsync(ct);
+    }
 
+    /// <summary>Bozza e pubblicazione in un'unica transazione: se il testo non è pubblicabile non resta nessuna bozza orfana.</summary>
+    public async Task<Guid> CreateAndPublishAsync(Guid commandId, Guid practiceId, Guid actorId, string title, string templateBody,
+        DateOnly effectiveFrom, IReadOnlyList<Guid> activityVersionIds, byte[] hmacKey, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        if (await ClaimCommandAsync(conn, tx, commandId, "create_publish_notice", ct) is { } existing) return existing;
+        var v = await InsertDraft(conn, tx, practiceId, actorId, title, templateBody, ct);
+        await PublishCore(conn, tx, v, actorId, effectiveFrom, activityVersionIds, hmacKey, ct);
+        await SetResult(conn, tx, commandId, v, ct);
+        await tx.CommitAsync(ct);
+        return v;
+    }
+
+    private static async Task<Guid> InsertDraft(NpgsqlConnection conn, NpgsqlTransaction tx, Guid practiceId, Guid actorId, string title, string templateBody, CancellationToken ct)
+    {
+        var doc = (Guid)(await Scalar(conn, tx, "INSERT INTO ps.documents (practice_id, type_code, title, created_by) VALUES ($1,'notice',$2,$3) RETURNING id", ct, practiceId, title, actorId))!;
+        var v = (Guid)(await Scalar(conn, tx, "INSERT INTO ps.document_versions (document_id, version_number, language_code, body, created_by) VALUES ($1,1,'it',$2,$3) RETURNING id", ct, doc, templateBody, actorId))!;
+        await Audit(conn, tx, actorId, "notice.create", "document_version", v, ct);
+        return v;
+    }
+
+    private static async Task PublishCore(NpgsqlConnection conn, NpgsqlTransaction tx, Guid versionId, Guid approverId, DateOnly effectiveFrom,
+        IReadOnlyList<Guid> activityVersionIds, byte[] hmacKey, CancellationToken ct)
+    {
         string template; int number; Dictionary<string, string> values;
         await using (var cmd = new NpgsqlCommand("""
             SELECT dv.body, dv.version_number, p.name, p.controller_name, p.controller_identifier, p.address, p.privacy_contact, p.phone, p.dpo_contact
@@ -66,7 +93,7 @@ public sealed class NoticeService
                 ["document_version"] = number.ToString(), ["effective_date"] = effectiveFrom.ToString("dd/MM/yyyy")
             };
         }
-        var body = TemplateResolver.Resolve(template, values);   // eccezione se variabile non ammessa o dato mancante
+        var body = TemplateResolver.Resolve(template, values);   // eccezione se variabile non ammessa, dato mancante o parti guida
         var hmac = NoticeDocument.Hmac(hmacKey, body);
 
         await Exec(conn, tx, "UPDATE ps.document_versions SET body = $2 WHERE id = $1", ct, versionId, body);
@@ -75,8 +102,6 @@ public sealed class NoticeService
         await Exec(conn, tx, "UPDATE ps.document_versions SET status_code = 'approved', approved_by = $2, approved_at = now(), content_hmac = $3, effective_from = $4 WHERE id = $1", ct, versionId, approverId, hmac, effectiveFrom);
         await Exec(conn, tx, "UPDATE ps.document_versions SET status_code = 'published' WHERE id = $1", ct, versionId);
         await Audit(conn, tx, approverId, "notice.publish", "document_version", versionId, ct);
-        await SetResult(conn, tx, commandId, versionId, ct);
-        await tx.CommitAsync(ct);
     }
 
     /// <summary>Registra la consegna (non il consenso). Salva gli snapshot dei nomi e l'HMAC del modulo emesso.</summary>
