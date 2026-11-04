@@ -110,7 +110,7 @@ end;
 procedure InitializeWizard;
 begin
   LogFile := ExpandConstant('{tmp}\privacy-setup.log');
-  PgExists := RegKeyExists(HKLM64, '{#PgRegKey}') or DryRun and False;
+  PgExists := RegKeyExists(HKLM64, '{#PgRegKey}');
   if PgExists then
   begin
     RegQueryStringValue(HKLM64, '{#PgRegKey}', 'Base Directory', PgBase);
@@ -237,7 +237,8 @@ var
   Scripts: array[0..3] of String;
   Existing: Boolean;
 begin
-  Note('Privacy Studio - installazione ' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':') + IfThen(DryRun, ' (PROVA A SECCO: nessuna modifica)', ''));
+  if DryRun then Note('Privacy Studio - installazione (PROVA A SECCO: nessuna modifica)')
+  else Note('Privacy Studio - installazione ' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':'));
   SuperPwd := PgPage.Values[0];
   Scripts[0] := '001_schema_v1.sql'; Scripts[1] := '002_catalogs.sql'; Scripts[2] := '003_rules_and_grants.sql'; Scripts[3] := '004_disposal_ledger.sql';
   ConnFile := ExpandConstant('{localappdata}\PrivacyStudio\connection.txt');
