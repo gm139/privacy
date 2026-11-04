@@ -69,7 +69,7 @@ internal static class ScreenshotMode
         // 13 - editor di un'attività del registro
         var acts = await s.Registry.ListActivitiesAsync(practice);
         var draft = acts.First(a => a.StatusCode == "draft");
-        var ed = new ActivityEditorWindow(s, practice, user, draft.VersionId) { Height = 800 };
+        var ed = new ActivityEditorWindow(s, practice, user, draft.VersionId) { Height = 1280, Top = 0 };
         await Snap(ed, "13-registro-editor", load: () => ed.LoadAsync()); ed.Close();
 
         // 14 - nuova finalità
