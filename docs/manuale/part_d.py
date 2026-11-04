@@ -122,6 +122,9 @@ Privacy.App.exe --restore "D:\\Ripristino\\privacy-....psbk" --database privacy"
         ("16", "Installazione e ripristino su Windows pulito", "Il programma di installazione è solo in bozza: provato in \"prova a secco\", non con l'installazione reale di PostgreSQL; il ripristino è provato in ambiente di sviluppo.", "Sviluppo", "§ 4, 7.4"),
         ("17", "Tema dell'interfaccia", "Basato su una funzione sperimentale di .NET 10; provato su Windows 11, non su Windows 10, scale diverse dal 100% e contrasto elevato.", "Sviluppo", "§ 6.1"),
         ("18", "Firma digitale dell'installatore", "Senza certificato di firma Windows mostra l'avviso \"editore sconosciuto\". Decisione rimandata.", "Medico", "§ 4.0"),
+        ("19", "Ruolo del medico in strutture, associazioni e piattaforme", "Titolare autonomo, contitolare, responsabile o persona autorizzata: dipende da contratti e organizzazione.", "Consulente", "§ 0.1"),
+        ("20", "Trasferimenti fuori dall'Unione per servizi in cloud", "Validità delle decisioni di adeguatezza e delle garanzie contrattuali per ogni servizio con dati sanitari.", "Consulente", "§ 0.3.7"),
+        ("21", "Telemedicina, FSE, videosorveglianza, sito web", "Regole specifiche e possibile DPIA, non coperte dal programma.", "Consulente", "§ 0.3.11-12"),
     ]
     rows += [list(i) for i in items]
     s += TABLE(rows, [0.05, 0.22, 0.43, 0.20, 0.10])

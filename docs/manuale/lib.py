@@ -109,6 +109,12 @@ class Doc(BaseDocTemplate):
                                PageTemplate(id="main", frames=[fr], onPage=draw_page)])
         self._chapter = ""
         self._starts = {}
+        self._prev = {}
+
+    def build(self, flowables, *a, **k):
+        # a ogni passata si riparte da zero: l'intestazione usa la mappa pagina-capitolo della passata precedente (già stabile)
+        self._prev, self._starts = dict(self._starts), {}
+        return super().build(flowables, *a, **k)
 
     def afterFlowable(self, f):
         if isinstance(f, Paragraph):
@@ -130,8 +136,9 @@ def draw_page(c, doc):
     c.setFont("U-M", 8); c.setFillColor(NAVY)
     c.drawString(LM, H - 1.5 * cm, "Privacy Studio")
     c.setFont("U", 8); c.setFillColor(GREY)
-    starts = [p for p in doc._starts if p <= doc.page]
-    c.drawRightString(W - RM, H - 1.5 * cm, doc._starts[max(starts)][:70] if starts else "")
+    m = doc._prev or doc._starts
+    starts = [p for p in m if p <= doc.page]
+    c.drawRightString(W - RM, H - 1.5 * cm, m[max(starts)][:70] if starts else "")
     c.line(LM, 1.75 * cm, W - RM, 1.75 * cm)
     c.setFont("U", 7.6)
     c.drawString(LM, 1.2 * cm, getattr(doc, "footer", "Manuale d'uso e di conformità - versione 0.9 (bozza per revisione) - novembre 2026"))

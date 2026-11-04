@@ -28,7 +28,11 @@ def story():
         "né su un computer Windows \"pulito\" come quello dello studio.",
         "<b>Non usarlo con dati reali dei pazienti</b> finché non sono soddisfatte le condizioni di rilascio elencate nel capitolo 10 "
         "(tra le altre: prova di ripristino su una macchina pulita, decisione sulla gestione delle chiavi, conferma della regola dei termini)."])
-    s += NOTA("Il capitolo 10 elenca che cosa è disponibile e che cosa manca. Le schermate riprodotte usano <b>dati inventati</b> (studio, persone, richieste e incidenti fittizi); i valori che vi compaiono, per esempio le durate di conservazione, sono esempi e <b>non indicazioni</b>.")
+    s += NOTA("Il capitolo 0 vale per ogni medico, a prescindere dal programma; il capitolo 10 elenca che cosa il programma fa e che cosa manca. Le schermate riprodotte usano <b>dati inventati</b> (studio, persone, richieste e incidenti fittizi); i valori che vi compaiono, per esempio le durate di conservazione, sono esempi e <b>non indicazioni</b>.")
+    # ---------------------------------------------------------------- 0
+    import part_0
+    s += part_0.story()
+
     # ---------------------------------------------------------------- 1
     s += H1("1. A che cosa serve Privacy Studio")
     s += H2("1.1 Lo scopo")
