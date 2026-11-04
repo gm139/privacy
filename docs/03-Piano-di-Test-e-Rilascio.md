@@ -6,9 +6,10 @@ I test usano **dati sintetici**. Esistono tre suite eseguibili:
 
 - `db/run_tests.sh`: 132 controlli sullo schema (T01–T22 lato database, termini, audit, privilegi), su un PostgreSQL temporaneo.
 - `dotnet test` (soluzione `Privacy.sln`): test del dominio e di integrazione sui flussi F01–F07, compresa la parità fra il calcolo dei termini in C# e in SQL (ogni giorno 2026–2030). Per i test di integrazione serve `db/start_test_db.sh` e la variabile `PRIVACY_TEST_CONN` (senza, escono subito senza verificare nulla).
+- T19 (blocco dei tentativi di accesso che resiste al riavvio) è coperto da `AuthTests`: dopo cinque tentativi falliti il blocco dura 15 minuti, vale anche con la password giusta e sopravvive a nuove istanze del servizio.
 - T24 e T25 sono coperti **a livello di database**: backup cifrato, ripristino su database pulito dalla sola copia esterna e chiave, riapplicazione delle cancellazioni dal registro esterno. Restano da provare **su una macchina Windows pulita** e con la procedura scritta per una persona non tecnica.
 
-Restano da scrivere con l'applicazione: interfaccia, stampa/PDF (T27 nella parte documenti), blocco dei tentativi di accesso (T19), accesso di rete a PostgreSQL (T26), cifratura applicativa dei file (T20). Nessun test dimostra la conformità giuridica: dimostra che il software si comporta come specificato.
+Restano da scrivere con l'applicazione: interfaccia, stampa/PDF (T27 nella parte documenti), accesso di rete a PostgreSQL (T26), cifratura applicativa dei file (T20). Nessun test dimostra la conformità giuridica: dimostra che il software si comporta come specificato.
 
 ## 1. Test di comportamento normativo (v1)
 
