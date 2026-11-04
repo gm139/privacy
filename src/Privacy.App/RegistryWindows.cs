@@ -83,6 +83,7 @@ public sealed class ActivityEditorWindow : Window
         _addGround = new() { Content = "Aggiungi pre_supposto…" }, _removePurpose = new() { Content = "_Rimuovi finalità" },
         _submit = new() { Content = "_Invia in verifica" }, _publish = new() { Content = "_Pubblica…" };
     private readonly Dictionary<string, List<(CheckBox Box, string Code)>> _checks = new();
+    private readonly SemaphoreSlim _loadLock = new(1, 1);   // Loaded e chiamate manuali non devono caricare in parallelo
     private VersionDetail? _detail;
     private IReadOnlyDictionary<string, string> _labels = new Dictionary<string, string>();
 
@@ -127,6 +128,12 @@ public sealed class ActivityEditorWindow : Window
     }
 
     public async Task LoadAsync()
+    {
+        await _loadLock.WaitAsync();
+        try { await LoadCoreAsync(); } finally { _loadLock.Release(); }
+    }
+
+    private async Task LoadCoreAsync()
     {
         await Guard(async () =>
         {

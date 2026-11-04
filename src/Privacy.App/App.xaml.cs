@@ -33,8 +33,9 @@ public partial class App : Application
             main.Closed += (_, _) => Shutdown(0);
             main.Show();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            if (smoke) { Console.Error.WriteLine("SMOKE FAIL (eccezione): " + ex); Shutdown(99); return; }   // niente finestre bloccanti nelle prove automatiche
             MessageBox.Show("Avvio non riuscito. Verificare che il database sia attivo.", "Privacy Studio", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
