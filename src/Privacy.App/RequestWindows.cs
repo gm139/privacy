@@ -36,7 +36,7 @@ public sealed class NewRequestWindow : DialogForm
             if (chosen.Count == 0) return "Selezionare almeno un diritto.";
             var received = Received.Value ?? throw new FormatException("Indicare la data di ricezione.");
             CreatedId = await s.Requests.RegisterAsync(new RegisterRequestCommand(commandId, practiceId, userId, null, Requester.Text.Trim(),
-                (string)Capacity.SelectedValue, (string)Channel.SelectedValue, received, Text.Text.Trim(), chosen));
+                Sel(Capacity), Sel(Channel), received, Text.Text.Trim(), chosen));
             return null;
         };
     }
@@ -128,7 +128,7 @@ public sealed class RequestDetailWindow : Window
         var cmd = Guid.NewGuid();
         f.Submit = async () =>
         {
-            await _s.Requests.DecideAsync(cmd, _id, _user, (string)right.SelectedValue, (string)outcome.SelectedValue,
+            await _s.Requests.DecideAsync(cmd, _id, _user, DialogForm.Sel(right), DialogForm.Sel(outcome),
                 string.IsNullOrWhiteSpace(reason.Text) ? null : reason.Text.Trim(), sent.Value);
             return null;
         };

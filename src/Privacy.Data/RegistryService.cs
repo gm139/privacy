@@ -10,6 +10,13 @@ public sealed record ActivityExport(string Code, string Name, int VersionNumber,
     DateOnly? ReviewDueOn, IReadOnlyList<PurposeExport> Purposes, IReadOnlyList<string> DataCategories,
     IReadOnlyList<string> SubjectCategories, IReadOnlyList<string> RecipientCategories);
 
+public sealed record ActivityRow(Guid ActivityId, string Code, string Name, Guid VersionId, int VersionNumber, string StatusCode,
+    DateOnly? EffectiveFrom, DateOnly? ReviewDueOn, int RowVersion);
+public sealed record PurposeDetail(Guid Id, Guid PurposeKey, string Name, string? Description, string? LegalAssessment, string ConsentAssessmentCode,
+    IReadOnlyList<GroundExport> Grounds);
+public sealed record VersionDetail(Guid VersionId, Guid ActivityId, string Code, string Name, int VersionNumber, string StatusCode, string? Description,
+    DateOnly? ReviewDueOn, string? ChangeReason, int RowVersion, IReadOnlyList<PurposeDetail> Purposes,
+    IReadOnlyList<string> DataCategories, IReadOnlyList<string> SubjectCategories, IReadOnlyList<string> RecipientCategories);
 public sealed record PublishedActivity(Guid VersionId, string Code, string Name, int VersionNumber);
 
 /// <summary>Un'altra operazione ha modificato la stessa riga: ricaricare e riprovare (T15).</summary>
@@ -222,6 +229,92 @@ public sealed class RegistryService
         await using var r = await cmd.ExecuteReaderAsync(ct);
         while (await r.ReadAsync(ct)) list.Add(new PublishedActivity(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetInt32(3)));
         return list;
+    }
+
+    /// <summary>Per ogni attività: la versione più recente (in bozza, in verifica o pubblicata), da mostrare nell'elenco del registro.</summary>
+    public async Task<IReadOnlyList<ActivityRow>> ListActivitiesAsync(Guid practiceId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand("""
+            SELECT DISTINCT ON (a.id) a.id, a.code, a.name, v.id, v.version_number, v.status_code, v.effective_from, v.review_due_on, v.row_version
+            FROM ps.processing_activities a JOIN ps.activity_versions v ON v.activity_id = a.id
+            WHERE a.practice_id = $1 ORDER BY a.id, v.version_number DESC
+            """, conn);
+        cmd.Parameters.AddWithValue(practiceId);
+        var list = new List<ActivityRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+            list.Add(new ActivityRow(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetGuid(3), r.GetInt32(4), r.GetString(5),
+                r.IsDBNull(6) ? null : DateOnly.FromDateTime(r.GetDateTime(6)), r.IsDBNull(7) ? null : DateOnly.FromDateTime(r.GetDateTime(7)), r.GetInt32(8)));
+        return list.OrderBy(a => a.Code).ToList();
+    }
+
+    public async Task<VersionDetail?> GetVersionAsync(Guid versionId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        VersionDetail? head;
+        await using (var cmd = new NpgsqlCommand("""
+            SELECT v.id, a.id, a.code, a.name, v.version_number, v.status_code, v.description, v.review_due_on, v.change_reason, v.row_version
+            FROM ps.activity_versions v JOIN ps.processing_activities a ON a.id = v.activity_id WHERE v.id = $1
+            """, conn))
+        {
+            cmd.Parameters.AddWithValue(versionId);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (!await r.ReadAsync(ct)) return null;
+            head = new VersionDetail(r.GetGuid(0), r.GetGuid(1), r.GetString(2), r.GetString(3), r.GetInt32(4), r.GetString(5),
+                r.IsDBNull(6) ? null : r.GetString(6), r.IsDBNull(7) ? null : DateOnly.FromDateTime(r.GetDateTime(7)),
+                r.IsDBNull(8) ? null : r.GetString(8), r.GetInt32(9), Array.Empty<PurposeDetail>(), Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
+        }
+        var purposes = new List<(Guid Id, Guid Key, string Name, string? D, string? L, string C)>();
+        await using (var cmd = new NpgsqlCommand("SELECT id, purpose_key, name, description, legal_assessment, consent_assessment_code FROM ps.purpose_versions WHERE activity_version_id = $1 ORDER BY created_at, name", conn))
+        {
+            cmd.Parameters.AddWithValue(versionId);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct))
+                purposes.Add((r.GetGuid(0), r.GetGuid(1), r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4), r.GetString(5)));
+        }
+        var details = new List<PurposeDetail>();
+        foreach (var p in purposes)
+        {
+            var grounds = new List<GroundExport>();
+            await using var gc = new NpgsqlCommand("SELECT article6_code, article9_code, national_reference, scope FROM ps.purpose_legal_grounds WHERE purpose_version_id = $1 ORDER BY created_at", conn);
+            gc.Parameters.AddWithValue(p.Id);
+            await using var gr = await gc.ExecuteReaderAsync(ct);
+            while (await gr.ReadAsync(ct))
+                grounds.Add(new GroundExport(gr.GetString(0), gr.IsDBNull(1) ? null : gr.GetString(1), gr.IsDBNull(2) ? null : gr.GetString(2), gr.GetString(3)));
+            details.Add(new PurposeDetail(p.Id, p.Key, p.Name, p.D, p.L, p.C, grounds));
+        }
+        return head with
+        {
+            Purposes = details,
+            DataCategories = await Codes(conn, "activity_data_categories", versionId, ct),
+            SubjectCategories = await Codes(conn, "activity_subject_categories", versionId, ct),
+            RecipientCategories = await Codes(conn, "activity_recipient_categories", versionId, ct)
+        };
+    }
+
+    /// <summary>Elimina una finalità da una versione ancora modificabile (bozza o in verifica; lo impone il database).</summary>
+    public async Task RemovePurposeAsync(Guid purposeVersionId, Guid actorId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        await Exec(conn, tx, "DELETE FROM ps.purpose_legal_grounds WHERE purpose_version_id = $1", ct, purposeVersionId);
+        await Exec(conn, tx, "DELETE FROM ps.purpose_versions WHERE id = $1", ct, purposeVersionId);
+        await Audit(conn, tx, actorId, "registry.remove_purpose", "purpose_version", purposeVersionId, ct);
+        await tx.CommitAsync(ct);
+    }
+
+    /// <summary>Aggiunge un presupposto di liceità a una finalità esistente di una versione modificabile.</summary>
+    public async Task AddGroundAsync(Guid purposeVersionId, Guid actorId, GroundExport g, string assessmentNote, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        await Exec(conn, tx, """
+            INSERT INTO ps.purpose_legal_grounds (purpose_version_id, article6_code, article9_code, national_reference, scope, assessment_note, created_by)
+            VALUES ($1,$2,$3,$4,$5,$6,$7)
+            """, ct, purposeVersionId, g.Article6Code, (object?)g.Article9Code ?? DBNull.Value, (object?)g.NationalReference ?? DBNull.Value, g.Scope, assessmentNote, actorId);
+        await Audit(conn, tx, actorId, "registry.add_ground", "purpose_version", purposeVersionId, ct);
+        await tx.CommitAsync(ct);
     }
 
     private static async Task<IReadOnlyList<string>> Codes(NpgsqlConnection conn, string table, Guid versionId, CancellationToken ct)

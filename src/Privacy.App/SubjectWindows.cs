@@ -77,15 +77,15 @@ public sealed class DeliveryWindow : DialogForm
         AddNote("Se il paziente riceve ma non firma, scegliere «Consegnata senza firma»: non si registra alcun consenso o firma.");
         Submit = async () =>
         {
-            if (Notice.SelectedValue is not string v) return "Non ci sono informative pubblicate.";
-            var failed = (string)Receipt.SelectedValue == "failed_attempt";
+            var v = Sel(Notice);
+            var failed = Sel(Receipt) == "failed_attempt";
             var at = DeliveredAt.Value;
             if (failed && at is not null) return "Un tentativo fallito non ha data di consegna: svuotare il campo.";
             if (!failed && at is null) return "Indicare la data di consegna.";
             static string? N(string t) => string.IsNullOrWhiteSpace(t) ? null : t.Trim();
             if (N(Capacity.Text) is not null && N(Signatory.Text) is null) return "Indicare anche il nome del firmatario.";
             var (_, code) = await s.Notices.RecordDeliveryAsync(new RecordDeliveryCommand(cmd, Guid.Parse(v), subject.Id, null, userId,
-                (string)Channel.SelectedValue, (string)Receipt.SelectedValue, at, N(Signatory.Text), N(Capacity.Text), N(Note.Text)), s.HmacKey);
+                Sel(Channel), Sel(Receipt), at, N(Signatory.Text), N(Capacity.Text), N(Note.Text)), s.HmacKey);
             CreatedCode = code;
             return null;
         };

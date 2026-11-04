@@ -6,6 +6,7 @@ using Privacy.Domain;
 namespace Privacy.App;
 
 public sealed record RequestRow(Guid Id, string Reference, string Status, string Received, string Due, string Situation);
+public sealed record ActivityGridRow(Guid VersionId, string Code, string Name, string Version, string Status, string From, string Review);
 public sealed record SubjectRow(Guid Id, string Code, string First, string Last, string Birth, string Status);
 public sealed record NoticeRow(string Title, string Version, string From);
 public sealed record IncidentRow(Guid Id, string Reference, string Status, string Classification, string Deadline, string Remaining);
@@ -19,6 +20,8 @@ public partial class MainWindow : Window
 
     public int RequestCount => RequestsGrid.Items.Count;
     public int IncidentCount => IncidentsGrid.Items.Count;
+    public int ActivityCount => ActivitiesGrid.Items.Count;
+    private IReadOnlyList<ActivityRow> _activities = Array.Empty<ActivityRow>();
     public int SubjectCount => SubjectsGrid.Items.Count;
     public int NoticeCount => NoticesGrid.Items.Count;
     private IReadOnlyList<SubjectRecord> _subjects = Array.Empty<SubjectRecord>();
@@ -79,6 +82,7 @@ public partial class MainWindow : Window
             var now = DateTimeOffset.UtcNow;
             var incidents = await _services.Incidents.ListOpenAsync(_practiceId);
             await LoadPatientsAsync();
+            await LoadRegistryAsync(today);
             IncidentsGrid.ItemsSource = incidents.Select(i => new IncidentRow(i.Id, i.ReferenceCode, i.StatusCode, ClassLabel(i.ClassificationCode),
                 i.AwarenessAt is null ? "Consapevolezza non ancora registrata" : TimeZoneInfo.ConvertTime(IncidentClock.Deadline(i.AwarenessAt.Value), Rome).ToString("dd/MM/yyyy HH:mm", It),
                 i.AwarenessAt is null ? "-" : RemainingText(IncidentClock.Remaining(i.AwarenessAt.Value, now)))).ToList();
@@ -88,6 +92,75 @@ public partial class MainWindow : Window
             StatusText.Text = "Impossibile leggere i dati. Verificare che il database sia attivo e riprovare.";
         }
         finally { RefreshButton.IsEnabled = true; }
+    }
+
+    public async Task LoadRegistryAsync(DateOnly today)
+    {
+        _activities = await _services.Registry.ListActivitiesAsync(_practiceId);
+        ActivitiesGrid.ItemsSource = _activities.Select(a => new ActivityGridRow(a.VersionId, a.Code, a.Name, a.VersionNumber.ToString(), StatusOf(a, today),
+            a.EffectiveFrom?.ToString("dd/MM/yyyy", It) ?? "", a.ReviewDueOn?.ToString("dd/MM/yyyy", It) ?? "")).ToList();
+    }
+
+    private static string StatusOf(ActivityRow a, DateOnly today) => a.StatusCode switch
+    {
+        "draft" => "Bozza", "in_review" => "In verifica", "superseded" => "Superata",
+        "published" => a.ReviewDueOn is { } r && r < today ? "Pubblicata - riesame scaduto" : "Pubblicata", _ => a.StatusCode
+    };
+
+    private ActivityRow? SelectedActivity() => ActivitiesGrid.SelectedItem is ActivityGridRow r ? _activities.FirstOrDefault(a => a.VersionId == r.VersionId) : null;
+
+    private async void OnNewActivity(object sender, RoutedEventArgs e)
+    {
+        var w = new NewActivityWindow(_services, _practiceId, _userId) { Owner = this };
+        if (w.ShowDialog() == true && w.CreatedVersionId is { } v)
+        { new ActivityEditorWindow(_services, _practiceId, _userId, v) { Owner = this }.ShowDialog(); await LoadAsync(); }
+    }
+
+    private async void OnOpenActivity(object sender, RoutedEventArgs e)
+    {
+        if (SelectedActivity() is not { } a) { StatusText.Text = "Selezionare un'attività."; return; }
+        new ActivityEditorWindow(_services, _practiceId, _userId, a.VersionId) { Owner = this }.ShowDialog();
+        await LoadAsync();
+    }
+
+    private async void OnNewRevision(object sender, RoutedEventArgs e)
+    {
+        if (SelectedActivity() is not { } a) { StatusText.Text = "Selezionare un'attività."; return; }
+        if (a.StatusCode != "published") { StatusText.Text = "Una nuova revisione si crea a partire da una revisione pubblicata."; return; }
+        var f = new DialogForm("Nuova revisione") { Owner = this };
+        var reason = f.AddText("_Motivo della modifica", multiline: true);
+        f.AddNote("La nuova revisione parte da una copia di quella pubblicata, che resta in vigore finché non pubblichi la nuova.");
+        Guid created = default;
+        f.Submit = async () =>
+        {
+            if (string.IsNullOrWhiteSpace(reason.Text)) return "Indicare il motivo della modifica.";
+            created = await _services.Registry.NewRevisionAsync(a.VersionId, _userId, reason.Text.Trim());
+            return null;
+        };
+        if (f.ShowDialog() == true)
+        { new ActivityEditorWindow(_services, _practiceId, _userId, created) { Owner = this }.ShowDialog(); await LoadAsync(); }
+    }
+
+    private async void OnExportRegistry(object sender, RoutedEventArgs e)
+    {
+        var f = new DialogForm("Esporta il registro") { Owner = this };
+        var date = f.AddDate("Alla _data", DateOnly.FromDateTime(DateTime.Today));
+        string? text = null; DateOnly asOf = default;
+        f.Submit = async () =>
+        {
+            if (date.SelectedDate is not { } d) return "Indicare la data.";
+            asOf = DateOnly.FromDateTime(d);
+            var export = await _services.Registry.ExportAsOfAsync(_practiceId, asOf);
+            var labels = new Dictionary<string, string>();
+            foreach (var t in new[] { "cat_consent_assessment", "cat_article6", "cat_article9", "cat_data_category", "cat_subject_category", "cat_recipient_category" })
+                foreach (var i in await _services.Catalog.GetAsync(t)) labels[i.Code] = i.Label;
+            await using var c = await _services.Db.OpenAsync();
+            await using var q = new Npgsql.NpgsqlCommand("SELECT name FROM ps.practices WHERE id = $1", c);
+            q.Parameters.AddWithValue(_practiceId);
+            text = RegistryExportFormatter.Format(export, asOf, (string?)await q.ExecuteScalarAsync() ?? "", labels);
+            return null;
+        };
+        if (f.ShowDialog() == true && text is not null) new RegistryExportWindow(text, asOf) { Owner = this }.ShowDialog();
     }
 
     public async Task LoadPatientsAsync()

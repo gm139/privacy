@@ -38,7 +38,7 @@ internal static class SmokeTest
         // schermate di registrazione: compilate e inviate via codice
         var cat = new CatalogService(s.Db);
         var nr = new NewRequestWindow(s, practice, userId, await cat.GetAsync("cat_requester_capacity"), await cat.GetAsync("cat_request_channel"), await cat.GetAsync("cat_right"));
-        nr.Requester.Text = "Giulia Neri (smoke)"; nr.Text.Text = "Chiedo la rettifica";
+        nr.Capacity.SelectedIndex = 0; nr.Channel.SelectedIndex = 0; nr.Requester.Text = "Giulia Neri (smoke)"; nr.Text.Text = "Chiedo la rettifica";
         if (await nr.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: richiesta senza diritti accettata"); return 12; }
         nr.Rights.First(r => r.Code == "rectification").Box.IsChecked = true;
         if (!await nr.RunSubmitAsync() || nr.CreatedId is null) { Console.Error.WriteLine("SMOKE FAIL: nuova richiesta"); return 13; }
@@ -49,7 +49,7 @@ internal static class SmokeTest
         rd.Close();
 
         var ni = new NewIncidentWindow(s, practice, userId, await cat.GetAsync("cat_incident_classification"));
-        ni.Description.Text = "Accesso non autorizzato (smoke)";
+        ni.Classification.SelectedIndex = 0; ni.Description.Text = "Accesso non autorizzato (smoke)";
         ni.Awareness.Date.SelectedDate = DateTime.Today; ni.Awareness.Time.Text = "08:00";
         if (!await ni.RunSubmitAsync() || ni.CreatedId is null) { Console.Error.WriteLine("SMOKE FAIL: nuovo incidente"); return 14; }
         var idw = new IncidentDetailWindow(s, userId, ni.CreatedId.Value);
@@ -60,6 +60,33 @@ internal static class SmokeTest
         await main.LoadAsync();
         Console.WriteLine($"dopo inserimenti: richieste={main.RequestCount} incidenti={main.IncidentCount}");
         ok &= main.RequestCount == 2 && main.IncidentCount == 2;
+
+
+        // F01 dall'interfaccia: nuova attività -> editor -> finalità -> categorie -> pubblicazione -> sola lettura
+        var na = new NewActivityWindow(s, practice, userId);
+        na.Code.Text = "UI1"; na.ActivityName.Text = "Gestione degli appuntamenti (smoke)";
+        if (!await na.RunSubmitAsync() || na.CreatedVersionId is not { } uiVersion) { Console.Error.WriteLine("SMOKE FAIL: nuova attività"); return 21; }
+        var editor = new ActivityEditorWindow(s, practice, userId, uiVersion);
+        editor.Show(); await editor.LoadAsync();
+        editor.DescriptionBox.Text = "Agenda e promemoria"; editor.ReviewPicker.SelectedDate = DateTime.Today.AddYears(1);
+        editor.Check("cat_data_category", "identification"); editor.Check("cat_subject_category", "patients"); editor.Check("cat_recipient_category", "none_internal");
+        await editor.SaveAsync();
+        var pw = new PurposeWindow(s, userId, uiVersion, null, await cat.GetAsync("cat_consent_assessment"), await cat.GetAsync("cat_article6"), await cat.GetAsync("cat_article9"));
+        pw.PurposeName.Text = "Organizzazione degli appuntamenti"; pw.Assessment.Text = "Necessario per erogare la prestazione"; pw.Scope.Text = "Agenda";
+        if (await pw.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: finalità senza scelte accettata"); return 22; }
+        pw.Consent.SelectedValue = "not_required"; pw.Article6.SelectedValue = "contract";
+        if (!await pw.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: finalità: " + pw.ErrorText); return 23; }
+        await editor.LoadAsync();
+        var detail = (await s.Registry.GetVersionAsync(uiVersion))!;
+        ok &= detail.Purposes.Count == 1 && detail.DataCategories.Count == 1;
+        await s.Registry.SubmitForReviewAsync(uiVersion, userId);
+        await s.Registry.PublishAsync(Guid.NewGuid(), uiVersion, userId, DateOnly.FromDateTime(DateTime.Today), (await s.Registry.GetVersionAsync(uiVersion))!.RowVersion);
+        await editor.LoadAsync();
+        Console.WriteLine("editor dopo la pubblicazione: " + editor.HeaderText + " | " + editor.StatusText);
+        ok &= editor.HeaderText.Contains("pubblicata") && editor.StatusText.Contains("non è modificabile");
+        editor.Close();
+        var exported = await s.Registry.ExportAsOfAsync(practice, DateOnly.FromDateTime(DateTime.Today));
+        ok &= exported.Count == 1 && exported[0].Code == "UI1";
 
         // F02: registro attività pubblicato -> informativa -> interessato -> consegna -> storico -> rimozione
         var v = await s.Registry.CreateActivityAsync(Guid.NewGuid(), practice, userId, "A1", "Cura dei pazienti");
@@ -88,7 +115,7 @@ internal static class SmokeTest
         var subject = (await s.Subjects.GetAsync(sf.CreatedId.Value))!;
 
         var dw = new DeliveryWindow(s, userId, subject, await s.Notices.ListPublishedAsync(practice), await cat.GetAsync("cat_delivery_channel"), await cat.GetAsync("cat_receipt_status"));
-        dw.Receipt.SelectedValue = "delivered_unsigned";
+        dw.Channel.SelectedIndex = 0; dw.Receipt.SelectedValue = "delivered_unsigned";
         if (!await dw.RunSubmitAsync() || dw.CreatedCode is null) { Console.Error.WriteLine("SMOKE FAIL: consegna"); return 18; }
         Console.WriteLine("consegna: " + dw.CreatedCode);
 
@@ -111,7 +138,7 @@ internal static class SmokeTest
         ok &= !after.Matches && (await s.Subjects.GetAsync(subject.Id))!.StatusCode == "removed";
         await main.LoadAsync();
         Console.WriteLine($"pazienti={main.SubjectCount} informative={main.NoticeCount}");
-        ok &= main.SubjectCount == 1 && main.NoticeCount == 1;
+        ok &= main.SubjectCount == 1 && main.NoticeCount == 1 && main.ActivityCount == 2;
         main.Close(); login.Close();
         Console.WriteLine(ok ? "SMOKE OK" : "SMOKE FAIL: conteggi");
         return ok ? 0 : 11;

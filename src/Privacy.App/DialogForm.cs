@@ -107,10 +107,18 @@ public class DialogForm : Window
         return box;
     }
 
+    /// <summary>Valore scelto in un elenco; se non è stata fatta alcuna scelta, errore comprensibile (nessuna scelta predefinita).</summary>
+    public static string Sel(ComboBox box)
+    {
+        if (box.SelectedValue is string v) return v;
+        var name = System.Windows.Automation.AutomationProperties.GetName(box);
+        throw new FormatException($"Selezionare un valore: {name}.");
+    }
+
     public ComboBox AddCombo(string label, IEnumerable<CatalogItem> items)
     {
         var box = new ComboBox { ItemsSource = items.ToList(), DisplayMemberPath = nameof(CatalogItem.Label), SelectedValuePath = nameof(CatalogItem.Code), TabIndex = _tab++ };
-        if (box.Items.Count > 0) box.SelectedIndex = 0;
+        if (box.Items.Count == 1) box.SelectedIndex = 0;   // nessuna scelta preselezionata, salvo quando non ce n'è un'altra
         System.Windows.Automation.AutomationProperties.SetName(box, label.Replace("_", ""));
         _fields.Children.Add(Lbl(label, box)); _fields.Children.Add(box);
         return box;

@@ -28,7 +28,7 @@ public sealed class NewIncidentWindow : DialogForm
             if (string.IsNullOrWhiteSpace(Description.Text)) return "Descrivere i fatti.";
             var found = Discovered.Value ?? throw new FormatException("Indicare quando è stato rilevato.");
             CreatedId = await s.Incidents.ReportAsync(new ReportIncidentCommand(commandId, practiceId, userId, found, Awareness.Value,
-                Description.Text.Trim(), (string)Classification.SelectedValue));
+                Description.Text.Trim(), Sel(Classification)));
             return null;
         };
     }
@@ -121,8 +121,8 @@ public sealed class IncidentDetailWindow : Window
             if (string.IsNullOrWhiteSpace(reason.Text) || string.IsNullOrWhiteSpace(conseq.Text)) return "Motivazione e conseguenze sono obbligatorie.";
             long? n = null;
             if (!string.IsNullOrWhiteSpace(subjects.Text)) { if (!long.TryParse(subjects.Text.Trim(), out var x) || x < 0) return "Numero di interessati non valido."; n = x; }
-            await _s.Incidents.AssessAsync(new AssessIncidentCommand(cmd, _id, _user, (string)risk.SelectedValue, reason.Text.Trim(), conseq.Text.Trim(),
-                (string)notify.SelectedValue, (string)comm.SelectedValue, n, null, string.IsNullOrWhiteSpace(delay.Text) ? null : delay.Text.Trim(),
+            await _s.Incidents.AssessAsync(new AssessIncidentCommand(cmd, _id, _user, DialogForm.Sel(risk), reason.Text.Trim(), conseq.Text.Trim(),
+                DialogForm.Sel(notify), DialogForm.Sel(comm), n, null, string.IsNullOrWhiteSpace(delay.Text) ? null : delay.Text.Trim(),
                 cats.Where(c => c.Box.IsChecked == true).Select(c => c.Code).ToList()));
             return null;
         };
@@ -142,7 +142,7 @@ public sealed class IncidentDetailWindow : Window
         {
             if (string.IsNullOrWhiteSpace(desc.Text)) return "Descrivere l'azione.";
             var v = when.Value ?? throw new FormatException("Indicare data e ora.");
-            await _s.Incidents.AddActionAsync(cmd, _id, _user, (string)type.SelectedValue, v, desc.Text.Trim(), string.IsNullOrWhiteSpace(proto.Text) ? null : proto.Text.Trim());
+            await _s.Incidents.AddActionAsync(cmd, _id, _user, DialogForm.Sel(type), v, desc.Text.Trim(), string.IsNullOrWhiteSpace(proto.Text) ? null : proto.Text.Trim());
             return null;
         };
         if (f.ShowDialog() == true) await LoadAsync();

@@ -39,6 +39,27 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>
+            <TabItem Header="Registro">
+                <DockPanel Margin="0,8,0,0">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="Nuova _attività…" Click="OnNewActivity" TabIndex="30"/>
+                        <Button Content="_Apri o modifica…" Click="OnOpenActivity" Margin="8,0,0,0" TabIndex="31"/>
+                        <Button Content="Nuova _revisione…" Click="OnNewRevision" Margin="8,0,0,0" TabIndex="32"/>
+                        <Button Content="_Esporta alla data…" Click="OnExportRegistry" Margin="8,0,0,0" TabIndex="33"/>
+                    </StackPanel>
+                    <DataGrid x:Name="ActivitiesGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single"
+                              AutomationProperties.Name="Attività di trattamento" MouseDoubleClick="OnOpenActivity">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Codice" Binding="{Binding Code}" Width="90"/>
+                            <DataGridTextColumn Header="Attività" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Revisione" Binding="{Binding Version}" Width="90"/>
+                            <DataGridTextColumn Header="Stato" Binding="{Binding Status}" Width="130"/>
+                            <DataGridTextColumn Header="In vigore dal" Binding="{Binding From}" Width="110"/>
+                            <DataGridTextColumn Header="Riesame entro" Binding="{Binding Review}" Width="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
             <TabItem Header="Pazienti">
                 <DockPanel Margin="0,8,0,0">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">

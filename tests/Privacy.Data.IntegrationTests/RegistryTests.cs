@@ -120,4 +120,50 @@ public class RegistryTests
             x is not null && y is not null && System.Text.Json.JsonSerializer.Serialize(x) == System.Text.Json.JsonSerializer.Serialize(y);
         public int GetHashCode(IReadOnlyList<ActivityExport> o) => System.Text.Json.JsonSerializer.Serialize(o).GetHashCode();
     }
+
+    [Fact]
+    public async Task ListAndDetail_ShowLatestVersion_AndDraftPurposesCanBeEdited()
+    {
+        if (Conn is null) return;
+        var (svc, db, practice, user) = await SetupAsync();
+        var v1 = await CompleteDraft(svc, practice, user);
+        await svc.PublishAsync(Guid.NewGuid(), v1, user, new DateOnly(2026, 6, 1), await RowVersion(db, v1));
+        var v2 = await svc.NewRevisionAsync(v1, user, "Revisione");
+        var row = (await svc.ListActivitiesAsync(practice)).Single();
+        Assert.Equal((v2, 2, "draft"), (row.VersionId, row.VersionNumber, row.StatusCode));   // l'elenco mostra la revisione più recente
+
+        var d = (await svc.GetVersionAsync(v2))!;
+        Assert.Equal("Cura dei pazienti", d.Name);
+        Assert.Single(d.Purposes);
+        Assert.Equal("health_care", d.Purposes[0].Grounds.Single().Article9Code);
+        Assert.Contains("patients", d.SubjectCategories);
+
+        await svc.AddGroundAsync(d.Purposes[0].Id, user, new GroundExport("legal_obligation", null, "D.Lgs. di esempio", "Obblighi di legge"), "Valutazione");
+        Assert.Equal(2, (await svc.GetVersionAsync(v2))!.Purposes[0].Grounds.Count);
+        await svc.RemovePurposeAsync(d.Purposes[0].Id, user);
+        Assert.Empty((await svc.GetVersionAsync(v2))!.Purposes);
+
+        // la versione pubblicata resta intatta e non si modifica
+        var published = (await svc.GetVersionAsync(v1))!;
+        Assert.Single(published.Purposes);
+        await Assert.ThrowsAsync<PostgresException>(() => svc.RemovePurposeAsync(published.Purposes[0].Id, user));
+        Assert.Null(await svc.GetVersionAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void Formatter_ProducesReadableText_WithLabelsAndFallbackToCodes()
+    {
+        var export = new ActivityExport("A1", "Cura", 2, "Cartella", new DateOnly(2026, 6, 1), new DateOnly(2027, 6, 1),
+            new[] { new PurposeExport(Guid.NewGuid(), "Cura", "Terapia", "Art. 9(2)(h)", "not_required", new[] { new GroundExport("contract", "health_care", null, "Cura del paziente") }) },
+            new[] { "identification" }, new[] { "patients" }, Array.Empty<string>());
+        var text = RegistryExportFormatter.Format(new[] { export }, new DateOnly(2026, 12, 31), "Studio Rossi",
+            new Dictionary<string, string> { ["identification"] = "Dati anagrafici", ["health_care"] = "Art. 9(2)(h) - cura" });
+        Assert.Contains("Studio Rossi", text);
+        Assert.Contains("31/12/2026", text);
+        Assert.Contains("Dati anagrafici", text);            // etichetta dal catalogo
+        Assert.Contains("condizione art. 9: Art. 9(2)(h) - cura", text);
+        Assert.Contains("patients", text);                    // senza etichetta: il codice
+        Assert.Contains("Destinatari: non indicati", text);
+        Assert.Contains("Nessuna attività", RegistryExportFormatter.Format(Array.Empty<ActivityExport>(), new DateOnly(2026, 1, 1), "X", new Dictionary<string, string>()));
+    }
 }
