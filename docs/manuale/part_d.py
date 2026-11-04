@@ -120,6 +120,7 @@ Privacy.App.exe --restore "D:\\Ripristino\\privacy-....psbk" --database privacy"
         ("14", "Obiettivi di backup", "Perdita massima di 24 ore e ripristino in un giorno lavorativo sono proposte, non obblighi.", "Medico", "§ 6.8"),
         ("15", "Aggiornamento del programma", "Procedura per applicare nuove versioni dello schema, con copia di sicurezza prima, da scrivere e provare.", "Sviluppo, medico", "§ 4.3"),
         ("16", "Installazione e ripristino su Windows pulito", "Le prove sono state fatte in ambiente di sviluppo; manca la prova su un computer pulito con installatore.", "Sviluppo", "§ 4, 7.4"),
+        ("17", "Tema dell'interfaccia", "Basato su una funzione sperimentale di .NET 10; provato su Windows 11, non su Windows 10, scale diverse dal 100% e contrasto elevato.", "Sviluppo", "§ 6.1"),
     ]
     rows += [list(i) for i in items]
     s += TABLE(rows, [0.05, 0.22, 0.43, 0.20, 0.10])

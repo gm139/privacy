@@ -27,6 +27,13 @@ def story():
         "<b>Le date e le ore</b> sono sempre in ora italiana.",
     ])
 
+    s += H3("Aspetto: chiaro, scuro o come Windows")
+    s += [P("In alto, accanto ai pulsanti, il menu <b>Aspetto</b> permette di scegliere fra tre temi: <b>Come Windows</b> (è l'impostazione iniziale: il programma segue il tema chiaro o scuro e il colore d'accento scelti in Windows, "
+            "e si adegua anche se il tema di Windows cambia mentre è aperto), <b>Chiaro</b> e <b>Scuro</b>. La scelta si applica subito a tutte le finestre ed è ricordata per l'utente Windows. "
+            "I messaggi di errore e di esito cambiano colore per restare leggibili su fondo chiaro e scuro. Il tema non modifica alcun dato né stampa.")]
+    s += FIG("dark-03","La stessa finestra principale con il tema scuro.")
+    s += FIG("dark-12","Il dettaglio di un incidente con il tema scuro.", maxh=8.5 * cm)
+    s += ESAMINARE("Il tema \"Come Windows\" è stato provato solo su Windows 11. Il comportamento su Windows 10, con schermi a scala diversa dal 100% o con la modalità a contrasto elevato, <b>non è stato verificato</b>. Il tema usa una funzione che Microsoft considera ancora sperimentale: va ricontrollata dopo gli aggiornamenti del programma di esecuzione.")
     # ---------------------------------------------------------------- 6.2
     s += H2("6.2 Pazienti (anagrafica degli interessati)")
     s += [P("La scheda <b>Pazienti</b> contiene l'anagrafica minima necessaria alle consegne delle informative: nome, cognome e, se si vuole, data di nascita, codice fiscale, email e telefono. "

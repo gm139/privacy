@@ -17,7 +17,10 @@ Le immagini in `img/` sono generate dal programma stesso (build Debug) con dati 
 
 ```
 set PRIVACY_CONN=Host=127.0.0.1;Port=55432;Database=privacy_demo;Username=privacy_app;Password=...
-Privacy.App.exe --screenshots "C:\cartella\di\uscita"
+Privacy.App.exe --screenshots "C:\cartella\di\uscita" --theme light   (oppure dark)
 ```
 
 Dopo un cambiamento dell'interfaccia basta rigenerarle e ricostruire il PDF. Richiede `pillow`.
+
+In Windows serve il .NET 10 Desktop Runtime (anche per eseguire la build Debug da un SDK installato in una cartella utente: impostare `DOTNET_ROOT`).
+Le immagini `dark-*.png` sono quelle del tema scuro; le altre, del tema chiaro.

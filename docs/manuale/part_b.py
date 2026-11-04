@@ -11,7 +11,7 @@ def story():
         ["Sistema operativo", "Windows 10 o 11, 64 bit, con gli aggiornamenti installati", "Un computer dedicato allo studio, non usato per altro."],
         ["Memoria e spazio", "8 GB di memoria; almeno 5 GB liberi per il programma e il database", "I dati del programma sono piccoli (anagrafiche, registri, prove di consegna); lo spazio per i backup va previsto a parte."],
         ["Database", "PostgreSQL 17 (provato con la 17)", "Installato sullo stesso computer, in ascolto solo su quel computer (§ 4.2)."],
-        ["Ambiente di esecuzione", ".NET 8 Desktop Runtime, 64 bit", "Componente gratuito di Microsoft."],
+        ["Ambiente di esecuzione", ".NET 10 Desktop Runtime, 64 bit", "Componente gratuito di Microsoft (versione a supporto prolungato)."],
         ["Supporto per la copia esterna", "Disco esterno o altra macchina", "<b>Indispensabile</b>: un backup sullo stesso disco non protegge da guasto, furto o incendio."],
         ["Supporto per le chiavi di recupero", "Chiavetta o altro, custodito fuori dal PC", "Vedi § 5.3."],
     ], [0.22, 0.38, 0.40])
@@ -51,7 +51,7 @@ def story():
     s += H2("4.1 Installare i componenti")
     s += STEPS([
         "Installare <b>PostgreSQL 17</b> (programma di installazione di EDB). Durante l'installazione si sceglie la password dell'utente amministratore del database (<font name='UM'>postgres</font>): annotarla in un luogo sicuro. Lasciare la porta predefinita (5432).",
-        "Installare il <b>.NET 8 Desktop Runtime</b> a 64 bit.",
+        "Installare il <b>.NET 10 Desktop Runtime</b> a 64 bit (è lo stesso componente che serve al tema grafico del programma).",
         "Copiare la cartella del programma (<font name='UM'>Privacy.App</font> e le sue librerie) in una cartella dello studio, ad esempio <font name='UM'>C:\\Programmi\\PrivacyStudio</font>.",
     ])
     s += ESAMINARE("La cartella del programma si ottiene oggi compilando il codice (<font name='UM'>dotnet publish src\\Privacy.App -c Release -r win-x64 --self-contained false</font>). "
