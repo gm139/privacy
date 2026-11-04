@@ -80,7 +80,7 @@ internal static class SmokeTest
         nn.Activities[0].Box.IsChecked = true;
         if (await nn.RunSubmitAsync()) { Console.Error.WriteLine("SMOKE FAIL: testo di partenza con parti da completare pubblicato"); return 15; }
         nn.Body.Text = "Titolare {{controller_name}}, {{address}}. Contatti {{privacy_contact}}. Versione {{document_version}} dal {{effective_date}}.";
-        if (!await nn.RunSubmitAsync() || nn.CreatedVersionId is null) { Console.Error.WriteLine("SMOKE FAIL: pubblicazione informativa"); return 16; }
+        if (!await nn.RunSubmitAsync() || nn.CreatedVersionId is null) { Console.Error.WriteLine("SMOKE FAIL: pubblicazione informativa: " + nn.ErrorText); return 16; }
 
         var sf = new SubjectFormWindow(s, practice, userId, null);
         sf.First.Text = "Anna"; sf.Last.Text = "Verdi (smoke)";

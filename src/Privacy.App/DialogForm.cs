@@ -53,6 +53,9 @@ public class DialogForm : Window
     /// <summary>Restituisce un messaggio d'errore da mostrare, oppure null se l'operazione è riuscita (la finestra si chiude).</summary>
     public Func<Task<string?>>? Submit { get; set; }
 
+    /// <summary>Ultimo messaggio d'errore mostrato (per le prove automatiche).</summary>
+    public string ErrorText => _error.Text;
+
     public DialogForm(string title, double width = 500)
     {
         Title = title; Width = width; MaxHeight = 760; SizeToContent = SizeToContent.Height;
