@@ -119,8 +119,9 @@ Privacy.App.exe --restore "D:\\Ripristino\\privacy-....psbk" --database privacy"
         ("13", "Misure di garanzia per dati sanitari", "L'art. 2-septies del Codice prevede misure di garanzia per i dati relativi alla salute da adottare con provvedimento del Garante: stato e contenuto vigenti da verificare.", "Consulente", "§ 2.1"),
         ("14", "Obiettivi di backup", "Perdita massima di 24 ore e ripristino in un giorno lavorativo sono proposte, non obblighi.", "Medico", "§ 6.8"),
         ("15", "Aggiornamento del programma", "Procedura per applicare nuove versioni dello schema, con copia di sicurezza prima, da scrivere e provare.", "Sviluppo, medico", "§ 4.3"),
-        ("16", "Installazione e ripristino su Windows pulito", "Le prove sono state fatte in ambiente di sviluppo; manca la prova su un computer pulito con installatore.", "Sviluppo", "§ 4, 7.4"),
+        ("16", "Installazione e ripristino su Windows pulito", "Il programma di installazione è solo in bozza: provato in \"prova a secco\", non con l'installazione reale di PostgreSQL; il ripristino è provato in ambiente di sviluppo.", "Sviluppo", "§ 4, 7.4"),
         ("17", "Tema dell'interfaccia", "Basato su una funzione sperimentale di .NET 10; provato su Windows 11, non su Windows 10, scale diverse dal 100% e contrasto elevato.", "Sviluppo", "§ 6.1"),
+        ("18", "Firma digitale dell'installatore", "Senza certificato di firma Windows mostra l'avviso \"editore sconosciuto\". Decisione rimandata.", "Medico", "§ 4.0"),
     ]
     rows += [list(i) for i in items]
     s += TABLE(rows, [0.05, 0.22, 0.43, 0.20, 0.10])
@@ -138,7 +139,7 @@ Privacy.App.exe --restore "D:\\Ripristino\\privacy-....psbk" --database privacy"
         ["F06 Backup e ripristino", "Backup cifrato verificato con copia esterna; verifica file; chiavi di recupero; ripristino da riga di comando; riapplicazione eliminazioni.", "Pianificazione automatica; prova su Windows pulito."],
         ["F07 Rimozione interessato", "Rimozione con anonimizzazione delle prove di consegna.", "—"],
         ["Accesso", "Accesso con password, blocco persistente, audit.", "Cambio password in interfaccia; scadenza della sessione; più utenti e ruoli."],
-        ["Installazione", "Prima configurazione guidata; script del database.", "Programma di installazione; aggiornamenti; modifica dei dati dello studio."],
+        ["Installazione", "Prima configurazione guidata; script del database; programma di installazione con PostgreSQL incluso (bozza).", "Prova dell'installatore su Windows pulito; firma digitale; aggiornamenti automatici; modifica dei dati dello studio."],
     ], [0.20, 0.46, 0.34])
     s += H2("10.2 Condizioni prima di usare dati reali")
     s += [P("Condizioni di progetto basate sul rischio (non un certificato di conformità). Se una non è soddisfatta, si continua a provare con dati inventati.")]

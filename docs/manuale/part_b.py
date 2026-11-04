@@ -11,7 +11,7 @@ def story():
         ["Sistema operativo", "Windows 10 o 11, 64 bit, con gli aggiornamenti installati", "Un computer dedicato allo studio, non usato per altro."],
         ["Memoria e spazio", "8 GB di memoria; almeno 5 GB liberi per il programma e il database", "I dati del programma sono piccoli (anagrafiche, registri, prove di consegna); lo spazio per i backup va previsto a parte."],
         ["Database", "PostgreSQL 17 (provato con la 17)", "Installato sullo stesso computer, in ascolto solo su quel computer (§ 4.2)."],
-        ["Ambiente di esecuzione", ".NET 10 Desktop Runtime, 64 bit", "Componente gratuito di Microsoft (versione a supporto prolungato)."],
+        ["Ambiente di esecuzione", "Incluso nel programma", "Il programma di installazione porta con sé .NET: non va installato a parte."],
         ["Supporto per la copia esterna", "Disco esterno o altra macchina", "<b>Indispensabile</b>: un backup sullo stesso disco non protegge da guasto, furto o incendio."],
         ["Supporto per le chiavi di recupero", "Chiavetta o altro, custodito fuori dal PC", "Vedi § 5.3."],
     ], [0.22, 0.38, 0.40])
@@ -45,16 +45,34 @@ def story():
 
     # ---------------------------------------------------------------- 4
     s += H1("4. Installazione")
-    s += ATTENZIONE("Un programma di installazione guidata <b>non è ancora disponibile</b>. La procedura qui descritta è quella tecnica, da fare insieme a una persona di fiducia, e "
-                    "<b>non è ancora stata provata su un computer Windows pulito</b>: i punti che richiedono cautela sono segnalati. "
-                    "Le prove finora fatte (installazione da zero del database, prima configurazione e primo accesso) sono state eseguite su un ambiente di sviluppo.")
-    s += H2("4.1 Installare i componenti")
+    s += H2("4.0 Installazione guidata (consigliata)")
+    s += [P("Il programma di installazione <b>PrivacyStudio-Setup-0.9.0.exe</b> fa in un solo passaggio ciò che i punti 4.1-4.5 descrivono a mano. Va eseguito <b>dall'utente Windows che userà il programma</b> (con i permessi di amministratore, che Windows chiede), "
+            "perché i file di connessione e le chiavi sono personali di quell'utente.")]
+    s += STEPS([
+        "Avviare il programma di installazione e confermare la richiesta di Windows. Scegliere la cartella del programma (di norma quella proposta).",
+        "<b>Password del database</b>: scegliere la password dell'amministratore (<font name='UM'>postgres</font>), di almeno 10 caratteri. Annotarla in un luogo sicuro: serve per il ripristino dei backup e per la manutenzione. Se PostgreSQL 17 è già presente, il programma chiede la password esistente (non la salva).",
+        "<b>Backup</b>: indicare la cartella dei backup sul computer e la <b>copia esterna</b> (disco esterno o altra macchina). Il programma avvisa se la copia esterna manca o è sullo stesso disco di Windows.",
+        "Attendere: l'installazione di PostgreSQL richiede qualche minuto. Il programma installa PostgreSQL 17 (se manca) tenendolo in ascolto solo su questo computer, crea il database e i due ruoli con <b>password casuali generate da lui</b>, applica gli script dello schema, scrive i file di configurazione e crea i collegamenti.",
+        "Al termine avviare Privacy Studio: compare la <b>Prima configurazione</b> (§ 5.1).",
+    ])
+    s += BUL([
+        "Le password dei due ruoli del database non vanno mai digitate dall'utente: la password del ruolo operativo è nel file <font name='UM'>connection.txt</font> dell'utente; quella del ruolo di installazione è in un file riservato agli amministratori, nella cartella dei dati comuni di Windows.",
+        "Se il database dello studio esiste già (aggiornamento del programma), l'installazione <b>non tocca i dati</b>. L'aggiornamento dello schema non è ancora automatico (punto 15 del cap. 9).",
+        "La <b>disinstallazione</b> rimuove il programma ma <b>non</b> il database, i backup e le chiavi, che contengono dati dello studio.",
+        "Per l'assistenza tecnica: l'installazione può essere non interattiva con i parametri <font name='UM'>/VERYSILENT /PGPASSWORD=… /EXTERNALDIR=…</font>; con <font name='UM'>/DRYRUN=1</font> mostra cosa farebbe senza modificare nulla.",
+    ])
+    s += ATTENZIONE("Il programma di installazione è una <b>bozza non ancora provata su un computer Windows pulito</b>. È stato compilato e verificato soltanto in \"prova a secco\" (sequenza dei passaggi, copia dei file, messaggi), ma l'installazione reale di PostgreSQL e la creazione del database con le password generate "
+                    "<b>non sono state eseguite</b>. Fino a quella prova, usare la procedura manuale qui sotto solo con l'aiuto dell'assistenza e senza dati reali. "
+                    "Il programma non è <b>firmato digitalmente</b>: Windows mostrerà l'avviso \"editore sconosciuto\".")
+    s += H2("Installazione manuale (riferimento tecnico)")
+    s += [P("I punti seguenti descrivono i passaggi che il programma di installazione automatizza. Servono per capire cosa succede, per l'assistenza e come alternativa.")]
+    s += H2("4.1 Installare i componenti (manuale)")
     s += STEPS([
         "Installare <b>PostgreSQL 17</b> (programma di installazione di EDB). Durante l'installazione si sceglie la password dell'utente amministratore del database (<font name='UM'>postgres</font>): annotarla in un luogo sicuro. Lasciare la porta predefinita (5432).",
-        "Installare il <b>.NET 10 Desktop Runtime</b> a 64 bit (è lo stesso componente che serve al tema grafico del programma).",
+        "Il programma pubblicato in modalità autonoma (<font name='UM'>--self-contained true</font>) include .NET: non serve installarlo a parte.",
         "Copiare la cartella del programma (<font name='UM'>Privacy.App</font> e le sue librerie) in una cartella dello studio, ad esempio <font name='UM'>C:\\Programmi\\PrivacyStudio</font>.",
     ])
-    s += ESAMINARE("La cartella del programma si ottiene oggi compilando il codice (<font name='UM'>dotnet publish src\\Privacy.App -c Release -r win-x64 --self-contained false</font>). "
+    s += ESAMINARE("La cartella del programma si ottiene oggi compilando il codice (<font name='UM'>dotnet publish src\\Privacy.App -c Release -r win-x64 --self-contained true</font>). "
                    "Questo passaggio e l'avvio della versione Release su un computer pulito non sono ancora stati provati. Un installatore firmato è un obiettivo da realizzare prima del rilascio.")
     s += H2("4.2 Tenere il database chiuso verso la rete")
     s += [P("Il database deve accettare connessioni <b>solo dal computer stesso</b>. Nell'installazione standard di PostgreSQL è già così, ma va controllato:")]
