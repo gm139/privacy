@@ -133,6 +133,9 @@ public sealed class DeliveriesHistoryWindow : Window
         catch (Exception) { _integrity.Text = "Impossibile leggere le consegne."; }
     }
 
+    /// <summary>Per le prove e le immagini del manuale: seleziona la prima consegna e mostra il modulo.</summary>
+    public async Task ShowSelectedAsyncFirst() { if (_rows.Count > 0) _list.SelectedIndex = 0; await ShowSelectedAsync(); }
+
     public async Task ShowSelectedAsync()
     {
         if (_list.SelectedIndex < 0) { _integrity.Text = "Selezionare una consegna."; return; }

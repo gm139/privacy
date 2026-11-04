@@ -77,7 +77,7 @@ public class DialogForm : Window
         try
         {
             var err = await Submit();
-            if (err is null) { if (IsVisible) DialogResult = true; return true; }
+            if (err is null) { if (IsVisible) { try { DialogResult = true; } catch (InvalidOperationException) { Close(); } } return true; }
             _error.Text = err;
         }
         catch (FormatException e) { _error.Text = e.Message; }
