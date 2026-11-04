@@ -1,4 +1,5 @@
 using Npgsql;
+using static Privacy.Data.SqlHelpers;
 
 namespace Privacy.Data;
 
@@ -123,37 +124,9 @@ public sealed class RightsRequestService
 
     // ---- utilità interne
 
-    /// <summary>Registra il comando; se già eseguito restituisce il risultato precedente (Guid.Empty se senza risultato).</summary>
-    private static async Task<Guid?> ClaimCommandAsync(NpgsqlConnection c, NpgsqlTransaction tx, Guid commandId, string type, CancellationToken ct)
-    {
-        var n = await Exec(c, tx, "INSERT INTO ps.processed_commands (command_id, command_type) VALUES ($1,$2) ON CONFLICT DO NOTHING", ct, commandId, type);
-        if (n == 1) return null;
-        var prev = await Scalar(c, tx, "SELECT result_id FROM ps.processed_commands WHERE command_id = $1", ct, commandId);
-        return prev is Guid g ? g : Guid.Empty;
-    }
-
     private static Task AddEvent(NpgsqlConnection c, NpgsqlTransaction tx, Guid requestId, string type, Guid actor, string text, CancellationToken ct)
         => Exec(c, tx, "INSERT INTO ps.request_events (request_id, event_type_code, actor_id, description, created_by) VALUES ($1,$2,$3,$4,$3)", ct, requestId, type, actor, text);
 
     private static Task Audit(NpgsqlConnection c, NpgsqlTransaction tx, Guid actor, string action, Guid target, CancellationToken ct)
-        => Exec(c, tx, "INSERT INTO ps.audit_events (actor_id, action_code, outcome_code, correlation_id, target_type, target_id) VALUES ($1,$2,'success',gen_random_uuid(),'rights_request',$3)", ct, actor, action, target);
-
-    private static async Task<int> Exec(NpgsqlConnection c, NpgsqlTransaction tx, string sql, CancellationToken ct, params object[] p)
-    {
-        await using var cmd = Build(c, tx, sql, p);
-        return await cmd.ExecuteNonQueryAsync(ct);
-    }
-
-    private static async Task<object?> Scalar(NpgsqlConnection c, NpgsqlTransaction tx, string sql, CancellationToken ct, params object[] p)
-    {
-        await using var cmd = Build(c, tx, sql, p);
-        return await cmd.ExecuteScalarAsync(ct);
-    }
-
-    private static NpgsqlCommand Build(NpgsqlConnection c, NpgsqlTransaction tx, string sql, object[] p)
-    {
-        var cmd = new NpgsqlCommand(sql, c, tx);
-        foreach (var v in p) cmd.Parameters.Add(new NpgsqlParameter { Value = v is DateTimeOffset d ? d.ToUniversalTime() : v });   // Npgsql accetta solo offset 0
-        return cmd;
-    }
+        => SqlHelpers.Audit(c, tx, actor, action, "rights_request", target, ct);
 }
