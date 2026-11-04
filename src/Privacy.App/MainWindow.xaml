@@ -1,0 +1,39 @@
+<Window x:Class="Privacy.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Privacy Studio" Width="900" Height="560" WindowStartupLocation="CenterScreen">
+    <DockPanel Margin="16">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="_Aggiorna" Click="OnRefresh" TabIndex="0"/>
+            <TextBlock x:Name="HeaderText" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        </DockPanel>
+        <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="#B00020" TextWrapping="Wrap"
+                   AutomationProperties.LiveSetting="Polite"/>
+        <TabControl TabIndex="1">
+            <TabItem Header="Richieste in scadenza">
+                <DataGrid x:Name="RequestsGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column"
+                          AutomationProperties.Name="Richieste dei diritti in scadenza">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Riferimento" Binding="{Binding Reference}" Width="140"/>
+                        <DataGridTextColumn Header="Stato" Binding="{Binding Status}" Width="180"/>
+                        <DataGridTextColumn Header="Ricevuta il" Binding="{Binding Received}" Width="120"/>
+                        <DataGridTextColumn Header="Scadenza" Binding="{Binding Due}" Width="120"/>
+                        <DataGridTextColumn Header="Situazione" Binding="{Binding Situation}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Incidenti aperti">
+                <DataGrid x:Name="IncidentsGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column"
+                          AutomationProperties.Name="Incidenti aperti">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Riferimento" Binding="{Binding Reference}" Width="140"/>
+                        <DataGridTextColumn Header="Stato" Binding="{Binding Status}" Width="160"/>
+                        <DataGridTextColumn Header="Classificazione" Binding="{Binding Classification}" Width="200"/>
+                        <DataGridTextColumn Header="Notifica entro (72 ore)" Binding="{Binding Deadline}" Width="180"/>
+                        <DataGridTextColumn Header="Tempo residuo" Binding="{Binding Remaining}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>
