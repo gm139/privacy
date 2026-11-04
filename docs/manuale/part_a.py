@@ -18,20 +18,17 @@ def story():
     s += H2("Come sono segnalati i punti da verificare")
     s += [P("Le norme sono citate nella forma in cui chi scrive le conosce alla data del documento. La legge cambia e le autorità emanano nuovi provvedimenti: "
             "prima di basarsi su una citazione per una decisione importante, controllarne il testo vigente. Nel manuale compaiono quattro tipi di riquadro:")]
-    s += NORMA("Indica la norma (articolo del Regolamento UE 2016/679, del Codice privacy, ecc.) da cui nasce la funzione o l'obbligo descritto.")
-    s += ESAMINARE("Indica un punto <b>di cui non si ha certezza</b>, in cui la norma è interpretabile, o in cui la scelta spetta al titolare o al suo consulente. "
-                   "Tutti questi punti sono raccolti nel capitolo 9, con chi dovrebbe decidere.")
-    s += ATTENZIONE("Indica un rischio concreto: un'operazione irreversibile, una scadenza, una perdita di dati possibile.")
-    s += CONSIGLIO("Indica una buona pratica, non un obbligo.")
+    s += NORMA("La norma (articolo del GDPR, del Codice privacy, ecc.) da cui nasce la funzione o l'obbligo.")
+    s += ESAMINARE("Un punto <b>di cui non si ha certezza</b>, interpretabile o rimesso al titolare e al consulente. Sono tutti raccolti nel capitolo 9, con chi dovrebbe decidere.")
+    s += ATTENZIONE("Un rischio concreto: operazione irreversibile, scadenza, possibile perdita di dati.")
+    s += CONSIGLIO("Una buona pratica, non un obbligo.")
     s += H2("Stato del programma")
     s += ATTENZIONE([
         "Privacy Studio è in fase di <b>pre-rilascio</b>. È stato provato con dati sintetici (inventati) e con test automatici, non ancora con dati reali "
         "né su un computer Windows \"pulito\" come quello dello studio.",
         "<b>Non usarlo con dati reali dei pazienti</b> finché non sono soddisfatte le condizioni di rilascio elencate nel capitolo 10 "
         "(tra le altre: prova di ripristino su una macchina pulita, decisione sulla gestione delle chiavi, conferma della regola dei termini)."])
-    s += [P("Il capitolo 10 elenca, funzione per funzione, che cosa è già disponibile e che cosa manca. Le funzioni non ancora presenti sono descritte come tali: "
-            "il manuale non promette ciò che il programma non fa.")]
-
+    s += NOTA("Il capitolo 10 elenca che cosa è disponibile e che cosa manca. Le schermate riprodotte usano <b>dati inventati</b> (studio, persone, richieste e incidenti fittizi); i valori che vi compaiono, per esempio le durate di conservazione, sono esempi e <b>non indicazioni</b>.")
     # ---------------------------------------------------------------- 1
     s += H1("1. A che cosa serve Privacy Studio")
     s += H2("1.1 Lo scopo")

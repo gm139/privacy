@@ -17,6 +17,7 @@ def story():
         ["Pazienti", "Anagrafica degli interessati, consegna dell'informativa, storico.", "6.2, 6.3"],
         ["Informative", "Le informative pubblicate.", "6.3"],
     ], [0.22, 0.64, 0.14])
+    s += FIG("03-richieste-in-scadenza", "La finestra principale con la scheda «Richieste in scadenza». In alto i quattro pulsanti sempre disponibili.")
     s += H3("Regole comuni a tutte le schermate")
     s += BUL([
         "<b>Nessuna scelta preselezionata</b>: nelle liste a tendina bisogna scegliere esplicitamente; se si dimentica, il programma dice quale valore manca.",
@@ -37,6 +38,7 @@ def story():
         "<b>Consegne…</b> (o doppio clic): apre lo storico delle consegne della persona (§ 6.3).",
         "<b>Rimuovi…</b>: vedi sotto.",
     ])
+    s += FIG("08-pazienti", "La scheda «Pazienti»: ricerca, nuovo interessato, rettifica, consegna dell'informativa, storico, rimozione.")
     s += NORMA("L'interessato ha il diritto di ottenere la rettifica dei dati inesatti e, tenuto conto delle finalità, l'integrazione di quelli incompleti.", "Reg. UE 2016/679, art. 16")
     s += [P("La <b>rettifica</b> cambia solo l'anagrafica di oggi: i moduli già consegnati restano com'erano stati emessi (il programma li ricostruisce dai dati salvati al momento della consegna).")]
     s += H3("La rimozione di un interessato")
@@ -67,6 +69,7 @@ def story():
         "i diritti dell'interessato (accesso, rettifica, cancellazione, limitazione, opposizione, portabilità) e il diritto di proporre reclamo al Garante;",
         "se il conferimento dei dati è obbligatorio o facoltativo e le conseguenze del mancato conferimento; l'esistenza di processi decisionali automatizzati, se ci sono.",
     ])
+    s += FIG("09-informative", "La scheda «Informative» con le informative pubblicate.")
     s += H3("Creare e pubblicare un'informativa")
     s += STEPS([
         "Prima serve nel <b>Registro</b> almeno un'attività di trattamento <b>pubblicata</b> (§ 6.4): l'informativa deve riferirsi a ciò che lo studio ha dichiarato di fare.",
@@ -74,6 +77,7 @@ def story():
         "Il <b>testo di partenza</b> è solo uno schema: contiene variabili e promemoria <font name='UM'>[Completare: …]</font> da sostituire con il contenuto che il titolare ha deciso.",
         "Alla conferma il programma <b>sostituisce le variabili</b> con i dati correnti dello studio (denominazione, titolare, indirizzo, contatti, versione, data), calcola l'impronta del testo, approva e pubblica. Da quel momento il testo non cambia più.",
     ])
+    s += FIG("15-nuova-informativa", "«Nuova informativa»: testo con variabili, data di entrata in vigore e attività del registro collegate.", maxh=13.5 * cm)
     s += H3("Le variabili ammesse")
     s += [P("Si scrivono tra doppie graffe e sono un elenco chiuso: <font name='UM'>{{practice_name}}</font> (denominazione), <font name='UM'>{{controller_name}}</font> (titolare), "
             "<font name='UM'>{{controller_identifier}}</font>, <font name='UM'>{{address}}</font>, <font name='UM'>{{privacy_contact}}</font>, <font name='UM'>{{phone}}</font>, "
@@ -92,6 +96,7 @@ def story():
         "Se la riceve una persona diversa dal paziente (per esempio un genitore), indicarne <b>nome e qualità</b> nei campi del firmatario.",
         "Alla conferma il programma mostra il <b>codice di consegna</b> (formato <font name='UM'>PS-</font> seguito da 12 caratteri): è quello che compare sul modulo e serve a collegare una scansione alla consegna giusta.",
     ])
+    s += FIG("16-consegna-informativa", "«Consegna informativa»: informativa, modalità, esito e data. Nessuna scelta è preselezionata (qui compilata a titolo di esempio).")
     s += TABLE([
         ["Esito", "Significato"],
         ["<b>Consegnata senza firma</b>", "Il paziente ha ricevuto l'informativa ma non ha firmato. È un caso normale e lecito: non si registra alcuna firma o alcun consenso."],
@@ -105,6 +110,7 @@ def story():
     s += [P("Da <b>Pazienti › Consegne…</b> si vedono le consegne di una persona. Selezionandone una e premendo <b>Mostra modulo</b> il programma <b>ricostruisce il testo</b> a partire dai dati salvati al momento della consegna "
             "e ne ricalcola l'impronta (un codice di controllo con chiave segreta). Se coincide con quella salvata, il modulo è identico a quello emesso, anche se nel frattempo l'indirizzo dello studio è cambiato. "
             "Il testo si può copiare negli appunti.")]
+    s += FIG("17-storico-consegne", "Storico delle consegne di un paziente, con il modulo ricostruito e la verifica dell'integrità.", maxh=13.0 * cm)
     s += ESAMINARE("<b>Rappresentanti legali.</b> La struttura dati prevede la rappresentanza di minori o incapaci con verifica dei poteri e delle date di validità, ma la <b>schermata per gestirla non esiste ancora</b>: oggi chi riceve per un minore si indica a testo libero come firmatario. "
                    "Come documentare i poteri di chi ritira per conto di un minore o di una persona sotto tutela va deciso con il consulente.")
 
@@ -117,6 +123,7 @@ def story():
                "per uno studio medico il registro è quindi dovuto.", "Reg. UE 2016/679, art. 30, par. 5")
     s += [P("Il registro è composto da <b>attività</b> (per esempio \"Cura dei pazienti\", \"Gestione amministrativa e fatturazione\"). Ogni attività ha <b>revisioni</b> numerate: "
             "una revisione pubblicata non si modifica; per cambiare qualcosa si crea una nuova revisione. Così il registro \"alla data T\" si può sempre ricostruire.")]
+    s += FIG("07-registro", "La scheda «Registro»: l'attività A2 mostra «Pubblicata - riesame scaduto», A3 è in bozza.")
     s += H3("Creare un'attività")
     s += STEPS([
         "Scheda <b>Registro › Nuova attività…</b>: codice (es. A1) e nome. L'attività nasce in bozza e si apre l'editor.",
@@ -126,6 +133,8 @@ def story():
         "<b>Aggiungi presupposto…</b> aggiunge altre basi alla finalità selezionata; <b>Rimuovi finalità</b> la toglie (solo in bozza).",
         "<b>Salva dati e categorie</b>, poi <b>Invia in verifica</b> e infine <b>Pubblica…</b> indicando la data di entrata in vigore.",
     ])
+    s += FIG("13-registro-editor", "L'editor di una revisione in bozza: descrizione, riesame, categorie e finalità.", maxh=14.0 * cm)
+    s += FIG("14-nuova-finalita", "«Nuova finalità»: valutazione giuridica, base dell'art. 6 e condizione dell'art. 9 per i dati sulla salute.", maxh=12.0 * cm)
     s += H3("Che cosa controlla il programma alla pubblicazione")
     s += BUL([
         "descrizione dell'attività, data di riesame e approvazione presenti;",
@@ -141,6 +150,7 @@ def story():
         "<b>Esporta alla data…</b> produce un testo leggibile del registro com'era a quella data (copiabile o salvabile come file), da mostrare al Garante se lo chiede. Modifiche successive non cambiano l'esportazione di una data passata.",
         "Lo stato \"<b>Pubblicata - riesame scaduto</b>\" segnala le attività la cui data di riesame è passata.",
     ])
+    s += FIG("20-esportazione-registro", "Esportazione del registro alla data scelta: testo leggibile, copiabile e salvabile.", maxh=13.5 * cm)
     s += ESAMINARE([
         "<b>Completezza rispetto all'art. 30.</b> L'editor e l'esportazione non comprendono ancora i <b>sistemi</b> usati, le <b>misure di sicurezza</b> per attività, i <b>fornitori</b> (responsabili) e i <b>trasferimenti verso paesi terzi</b>; i termini di cancellazione sono nel modulo Conservazione ma non nell'esportazione. "
         "Finché mancano, queste parti vanno documentate a parte (la nota in fondo all'esportazione lo ricorda).",
@@ -168,6 +178,7 @@ def story():
         "Alla conferma il programma assegna il riferimento (<font name='UM'>R-2026-0001</font>, …) e <b>calcola la scadenza</b> (§ seguente), che compare nella scheda <b>Richieste in scadenza</b>.",
         "<b>Apri selezionata</b> (o doppio clic) mostra il dettaglio: i diritti richiesti con il loro stato, la cronologia e le azioni.",
     ])
+    s += FIG("10-nuova-richiesta", "«Nuova richiesta»: richiedente, qualità, canale, data di ricezione, testo e diritti (almeno uno).", maxh=12.5 * cm)
     s += H3("Come si calcola la scadenza")
     s += [P("Regola applicata (identificata nel programma come <font name='UM'>it-1182-v1</font>), ispirata al Regolamento (CEE, Euratom) n. 1182/71: il giorno di ricezione non conta; la scadenza è il <b>giorno corrispondente del mese successivo</b>; "
             "se quel giorno non esiste (per esempio 31 gennaio) è l'ultimo giorno del mese; se cade di sabato, domenica o in una festività nazionale (compreso il lunedì di Pasqua) slitta al <b>primo giorno lavorativo successivo</b>. "
@@ -178,6 +189,7 @@ def story():
         "<b>La proroga</b>: il programma accetta una proroga fino a <b>tre mesi complessivi dalla ricezione</b> (un mese più due). Se invece i due mesi di proroga si sommassero alla scadenza già calcolata (per esempio 28 febbraio più due mesi) il limite cambierebbe. Anche questo è da confermare.",
         "Il programma <b>non registra la verifica dell'identità</b> del richiedente (art. 12, par. 6: il titolare può chiedere informazioni supplementari in caso di dubbio ragionevole); va annotata nella cronologia o a parte. La struttura dati è prevista, la schermata no.",
         "<b>Costi e richieste manifestamente infondate o eccessive</b> (art. 12, par. 5): le informazioni sono gratuite, salvo il caso di richieste manifestamente infondate o eccessive. La valutazione è del titolare."])
+    s += FIG("11-dettaglio-richiesta", "Dettaglio di una richiesta: diritti con il loro stato, cronologia e azioni (Proroga, Decisione, Chiudi richiesta).")
     s += H3("Prorogare, decidere, chiudere")
     s += BUL([
         "<b>Proroga…</b>: nuova scadenza (in avanti, entro il limite), <b>motivazione</b> obbligatoria e, se già comunicata, la data di comunicazione all'interessato. La scadenza iniziale resta registrata: non si cancella.",
@@ -200,6 +212,7 @@ def story():
                "salvo le eccezioni del par. 3 (dati resi incomprensibili, misure successive che escludono il rischio, sforzo sproporzionato).", "Reg. UE 2016/679, art. 34")
     s += [P("Una violazione non è solo un furto di dati: è anche la <b>perdita</b> o l'<b>indisponibilità</b> dei dati (per esempio un guasto o un attacco che impedisce di accedere alle cartelle) e l'accesso o la modifica non autorizzati. "
             "Il programma permette di registrare anche un incidente di sola indisponibilità come violazione.")]
+    s += FIG("04-incidenti-aperti", "La scheda «Incidenti aperti»: scadenza delle 72 ore in ora italiana e tempo residuo.")
     s += H3("Che cosa fa il programma")
     s += STEPS([
         "<b>Nuovo incidente…</b>: quando è stato <b>rilevato</b>, quando il titolare ne è <b>venuto a conoscenza</b> (se già accertato; altrimenti il campo resta vuoto), descrizione e classificazione provvisoria (da valutare, incidente tecnico senza dati personali, violazione di dati personali).",
@@ -208,6 +221,7 @@ def story():
         "L'azione di tipo <b>Notifica al Garante</b> richiede il <b>numero di protocollo o la ricevuta</b>, da inserire <b>dopo</b> l'invio effettivo: il programma non registra una notifica che non è avvenuta.",
         "<b>Chiudi incidente</b> quando tutto è documentato.",
     ])
+    s += FIG("12-dettaglio-incidente", "Dettaglio di un incidente: scadenza di notifica, azioni registrate e comandi (Consapevolezza, Valutazione, Registra azione, Chiudi).")
     s += ATTENZIONE("Il programma <b>non invia</b> la notifica al Garante e <b>non decide</b> se un evento sia una violazione né se vada notificata. Il medico (con il consulente, nei casi dubbi) valuta; il programma ricorda l'orologio e conserva la documentazione. "
                     "Anche le violazioni <b>non</b> notificate vanno registrate: l'art. 33, par. 5 lo richiede.")
     s += ESAMINARE([
@@ -228,6 +242,7 @@ def story():
         "<b>Illimitata, motivata</b> o <b>a criterio</b>: serve un criterio o una motivazione scritta; non scade da sola e compare tra le <b>regole da rivedere</b> quando è passata la data di riesame. Una durata \"vuota\" non vale mai come \"illimitata\".",
     ])
     s += [P("La regola nasce in <b>bozza</b> e non ha effetto finché il titolare non la <b>approva</b> (<b>Approva selezionata</b>). Una nuova versione di una regola sostituisce la precedente, che diventa \"superata\".")]
+    s += FIG("05-conservazione", "La scheda «Conservazione»: regole, elementi scaduti con il motivo e regole da rivedere. Le durate mostrate sono esempi inventati, non indicazioni.")
     s += H3("Eliminare gli elementi scaduti")
     s += STEPS([
         "Nella lista <b>Elementi scaduti</b> (richieste chiuse, incidenti chiusi, consegne di informative la cui durata approvata è trascorsa), selezionare uno o più elementi (tasto Ctrl per più righe).",
@@ -235,6 +250,7 @@ def story():
         "I dati vengono cancellati dal database (con i file collegati svuotati). Restano solo il <b>registro dell'eliminazione</b> (descrizione generica e identificativo dell'elemento, senza dati personali) e la riga di audit.",
         "L'identificativo viene scritto anche in un <b>file esterno</b> (<font name='UM'>ledgerPath</font>), copiato con ogni backup: serve, dopo un ripristino da un backup più vecchio, a rieliminare ciò che era già stato cancellato (§ 7.4).",
     ])
+    s += FIG("18-eliminazione-guidata", "Eliminazione guidata: elenco degli elementi, motivazione e conferma scritta.", maxh=9.0 * cm)
     s += ATTENZIONE("L'eliminazione è <b>irreversibile</b>. Richieste e incidenti si possono eliminare solo se chiusi. Il programma non cancella mai nulla da solo: ogni eliminazione richiede l'azione del titolare.")
     s += ESAMINARE([
         "<b>Durate di conservazione.</b> Per la <b>documentazione clinica</b> non esiste, per lo studio del singolo medico, un termine unico e semplice: la prassi per le cartelle cliniche delle strutture sanitarie si richiama a indicazioni ministeriali che portano a una conservazione molto lunga o illimitata, "
@@ -246,6 +262,7 @@ def story():
     # ---------------------------------------------------------------- 6.8
     s += H2("6.8 Backup e chiavi")
     s += NORMA("Le misure di sicurezza comprendono la capacità di ripristinare tempestivamente la disponibilità e l'accesso ai dati personali in caso di incidente fisico o tecnico, e una procedura per provare regolarmente l'efficacia delle misure.", "Reg. UE 2016/679, art. 32, par. 1, lett. c) e d)")
+    s += FIG("06-backup", "La scheda «Backup»: stato rispetto all'obiettivo di 24 ore, esecuzioni e comandi per le chiavi.")
     s += BUL([
         "<b>Esegui backup ora</b>: il programma estrae una copia dei dati, la <b>cifra</b>, la scrive nella cartella dei backup e nella copia esterna, poi la <b>rilegge e la decifra dal disco</b> per accertarsi che sia valida. Solo allora l'esecuzione risulta <b>Riuscita</b> con la data di verifica. Accanto alla copia viene messo il file con l'elenco delle eliminazioni.",
         "In cima alla scheda una riga indica lo stato rispetto all'obiettivo di <b>24 ore</b> (<i>ATTENZIONE: l'ultimo backup verificato risale a… ore fa</i>).",

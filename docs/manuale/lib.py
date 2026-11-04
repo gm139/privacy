@@ -85,6 +85,7 @@ S = {
     "toc2": ParagraphStyle("toc2", fontName="U", fontSize=9.2, leading=13, textColor=INK, leftIndent=16),
     "small": ParagraphStyle("small", fontName="U", fontSize=8, leading=11, textColor=GREY, alignment=TA_LEFT),
     "title_toc": ParagraphStyle("title_toc", fontName="U-B", fontSize=21, leading=26, textColor=NAVY, spaceAfter=10),
+    "caption": ParagraphStyle("caption", fontName="U-I", fontSize=8.2, leading=11, textColor=GREY, alignment=TA_CENTER),
     "title2": ParagraphStyle("title2", fontName="U-B", fontSize=15, leading=20, textColor=NAVY, spaceAfter=6),
 }
 
@@ -318,6 +319,34 @@ def TABLE(rows, widths, header=True, zebra=True, fs=None):
             if i % 2 == 0: st.append(("BACKGROUND", (0, i), (-1, i), colors.HexColor("#F4F7FA")))
     t.setStyle(TableStyle(st))
     return [t, Spacer(1, 8)]
+
+_fig_n = [0]
+_IMG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "img")
+_IMGC = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".img")
+
+def FIG(name, caption, maxh=12.8 * cm, dpi=192):
+    """Schermata del programma (immagine a 2x): dimensione naturale se sta nella pagina, altrimenti ridotta; con didascalia numerata."""
+    from PIL import Image as PI
+    from reportlab.platypus import Image
+    src = os.path.join(_IMG, name + ".png")
+    os.makedirs(_IMGC, exist_ok=True)
+    dst = os.path.join(_IMGC, name + ".png")
+    im = PI.open(src).convert("RGB")
+    pw, ph = im.size
+    if pw > 1500:
+        im = im.resize((1500, int(ph * 1500 / pw)), PI.LANCZOS); pw, ph = im.size
+    if not os.path.exists(dst): im.save(dst, optimize=True)
+    avail = W - LM - RM - 4
+    nat_w = pw / dpi * 2.54 * cm * (2134 / 1500.0 if pw == 1500 else 1.0)   # larghezza naturale (le immagini ridotte tornano alla scala originale)
+    w = min(avail, nat_w); h = w * ph / pw
+    if h > maxh: w = w * maxh / h; h = maxh
+    _fig_n[0] += 1
+    img = Image(dst, width=w, height=h)
+    box = Table([[img]], colWidths=[w + 4])
+    box.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.8, LINE), ("LEFTPADDING", (0, 0), (-1, -1), 1), ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+                             ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1)]))
+    cap = Paragraph("<b>Figura %d</b> - %s" % (_fig_n[0], caption), S["caption"])
+    return [KeepTogether([Spacer(1, 4), box, Spacer(1, 3), cap, Spacer(1, 8)])]
 
 def build_toc():
     toc = TableOfContents()

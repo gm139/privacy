@@ -117,6 +117,7 @@ psql -U privacy_migrator -d privacy -v ON_ERROR_STOP=1 -f 004_disposal_ledger.sq
         ["Telefono (facoltativo), contatto del DPO (facoltativo)", "Il contatto del DPO, se nominato, deve essere indicato nell'informativa (art. 13, par. 1, lett. b)."],
         ["Nome utente, nome mostrato, password", "Le credenziali del medico. La password deve avere almeno 12 caratteri, non essere troppo ripetitiva né contenere il nome utente. Non esiste un modo per recuperarla se dimenticata."],
     ], [0.36, 0.64])
+    s += FIG("01-prima-configurazione", "La finestra «Prima configurazione», compilata con dati inventati.", maxh=12.0 * cm)
     s += NORMA("L'informativa deve contenere l'identità e i dati di contatto del titolare e, se del caso, del responsabile della protezione dei dati.", "Reg. UE 2016/679, art. 13, par. 1, lett. a) e b)")
     s += ATTENZIONE("Lo studio si configura <b>una sola volta</b>. La modifica successiva dei dati dello studio (per esempio un cambio di indirizzo) non è ancora disponibile nell'interfaccia: "
                     "va fatta con l'aiuto dell'assistenza. Le informative già pubblicate conservano i dati com'erano al momento della pubblicazione, per costruzione.")
@@ -127,6 +128,7 @@ psql -U privacy_migrator -d privacy -v ON_ERROR_STOP=1 -f 004_disposal_ledger.sq
         "I messaggi di errore sono volutamente uguali per \"utente inesistente\" e \"password errata\".",
         "Ogni accesso, riuscito o no, è registrato nel registro di audit (senza mai registrare le password).",
     ])
+    s += FIG("02-accesso", "La finestra di accesso.")
     s += ESAMINARE("Il <b>cambio della password</b> esiste come funzione del programma ma <b>non ha ancora una schermata</b>. Mancano anche la scadenza della sessione per inattività e il blocco dello schermo del programma: "
                    "nel frattempo bloccare il computer (tasto Windows + L) ogni volta che ci si allontana.")
     s += H2("5.3 Le chiavi di recupero: da fare subito")
@@ -139,6 +141,7 @@ psql -U privacy_migrator -d privacy -v ON_ERROR_STOP=1 -f 004_disposal_ledger.sq
         "Conservare il file <b>fuori dal computer</b> (chiavetta in cassaforte) e la frase segreta <b>in un luogo diverso</b>.",
         "Prima di fidarsi, provare l'importazione su un altro computer (<b>Importa chiavi…</b>).",
     ])
+    s += FIG("19-chiavi-di-recupero", "Esportazione delle chiavi di recupero (scheda Backup).")
     s += ATTENZIONE("Importare chiavi su un computer che ne ha già <b>le sostituisce</b>: i backup e i moduli cifrati con le chiavi precedenti non saranno più apribili. "
                     "Il programma chiede di digitare SOSTITUISCI per confermare.")
     s += ESAMINARE("Questa è una soluzione <b>provvisoria</b>. La decisione di fondo su come proteggere le chiavi e il database (cifratura del disco, cifratura dei singoli campi, gestione delle chiavi, "
