@@ -79,4 +79,17 @@ public class IncidentTests
         await svc.SetAwarenessAsync(Guid.NewGuid(), id, user, Awareness);
         Assert.Equal(IncidentClock.Deadline(Awareness), (await svc.ListOpenAsync(practice)).Single().NotificationDeadlineAt);
     }
+
+    [Fact]
+    public async Task Detail_ShowsActionsAndAssessmentCount()
+    {
+        if (Conn is null) return;
+        var (svc, practice, user) = await SetupAsync();
+        var id = await svc.ReportAsync(Report(practice, user));
+        await svc.AddActionAsync(Guid.NewGuid(), id, user, "containment", DateTimeOffset.UtcNow, "Server isolato", null);
+        var d = (await svc.GetDetailAsync(id))!;
+        Assert.Equal(IncidentClock.Deadline(Awareness), d.NotificationDeadlineAt);
+        Assert.Equal("containment", d.Actions.Single().TypeCode);
+        Assert.Equal(0, d.AssessmentCount);
+    }
 }

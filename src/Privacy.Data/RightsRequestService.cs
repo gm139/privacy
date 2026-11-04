@@ -11,6 +11,12 @@ public sealed record RegisterRequestCommand(
 public sealed record RequestSummary(Guid Id, string ReferenceCode, string StatusCode,
     DateOnly InitialDueOn, DateOnly EffectiveDueOn, DateTimeOffset ReceivedAt);
 
+public sealed record RequestRight(string RightCode, bool Decided, bool ResponseSent);
+public sealed record RequestEvent(DateTimeOffset OccurredAt, string TypeCode, string Description);
+public sealed record RequestDetail(Guid Id, string ReferenceCode, string StatusCode, string? RequesterName, string RequestText,
+    DateTimeOffset ReceivedAt, DateOnly InitialDueOn, DateOnly EffectiveDueOn, bool Closed,
+    IReadOnlyList<RequestRight> Rights, IReadOnlyList<RequestEvent> Events);
+
 /// <summary>
 /// Flusso F03: richieste dei diritti. Ogni comando è una transazione unica (richiesta + eventi + audit)
 /// e ritentabile senza duplicati grazie a ps.processed_commands. Le regole (termini, chiusura) restano nel database.
@@ -120,6 +126,43 @@ public sealed class RightsRequestService
                 DateOnly.FromDateTime(r.GetDateTime(3)), DateOnly.FromDateTime(r.GetDateTime(4)),
                 r.GetFieldValue<DateTimeOffset>(5)));
         return list;
+    }
+
+    public async Task<RequestDetail?> GetDetailAsync(Guid requestId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        RequestDetail? head = null;
+        await using (var cmd = new NpgsqlCommand("""
+            SELECT id, reference_code, status_code, requester_name, request_text, received_at, initial_due_on, effective_due_on, closed_at IS NOT NULL
+            FROM ps.rights_requests WHERE id = $1
+            """, conn))
+        {
+            cmd.Parameters.AddWithValue(requestId);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (!await r.ReadAsync(ct)) return null;
+            head = new RequestDetail(r.GetGuid(0), r.GetString(1), r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3), r.GetString(4),
+                r.GetFieldValue<DateTimeOffset>(5), DateOnly.FromDateTime(r.GetDateTime(6)), DateOnly.FromDateTime(r.GetDateTime(7)), r.GetBoolean(8),
+                Array.Empty<RequestRight>(), Array.Empty<RequestEvent>());
+        }
+        var rights = new List<RequestRight>();
+        await using (var cmd = new NpgsqlCommand("""
+            SELECT rr.right_code, d.id IS NOT NULL, d.sent_at IS NOT NULL
+            FROM ps.request_rights rr LEFT JOIN ps.request_decisions d ON d.request_id = rr.request_id AND d.right_code = rr.right_code
+            WHERE rr.request_id = $1 ORDER BY rr.right_code
+            """, conn))
+        {
+            cmd.Parameters.AddWithValue(requestId);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct)) rights.Add(new RequestRight(r.GetString(0), r.GetBoolean(1), r.GetBoolean(2)));
+        }
+        var events = new List<RequestEvent>();
+        await using (var cmd = new NpgsqlCommand("SELECT occurred_at, event_type_code, description FROM ps.request_events WHERE request_id = $1 ORDER BY occurred_at, created_at", conn))
+        {
+            cmd.Parameters.AddWithValue(requestId);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct)) events.Add(new RequestEvent(r.GetFieldValue<DateTimeOffset>(0), r.GetString(1), r.GetString(2)));
+        }
+        return head with { Rights = rights, Events = events };
     }
 
     // ---- utilità interne

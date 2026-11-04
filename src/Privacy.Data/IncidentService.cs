@@ -13,6 +13,11 @@ public sealed record AssessIncidentCommand(Guid CommandId, Guid IncidentId, Guid
 public sealed record IncidentSummary(Guid Id, string ReferenceCode, string StatusCode, string ClassificationCode,
     DateTimeOffset? AwarenessAt, DateTimeOffset? NotificationDeadlineAt);
 
+public sealed record IncidentActionRow(DateTimeOffset OccurredAt, string TypeCode, string Description, string? ProtocolReference);
+public sealed record IncidentDetail(Guid Id, string ReferenceCode, string StatusCode, string ClassificationCode, string Description,
+    DateTimeOffset DiscoveredAt, DateTimeOffset? AwarenessAt, DateTimeOffset? NotificationDeadlineAt, bool Closed,
+    int AssessmentCount, IReadOnlyList<IncidentActionRow> Actions);
+
 /// <summary>Flusso F04: incidenti. Nessuna decisione automatica: il servizio registra, il medico decide.</summary>
 public sealed class IncidentService
 {
@@ -115,5 +120,32 @@ public sealed class IncidentService
             list.Add(new IncidentSummary(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetString(3),
                 r.IsDBNull(4) ? null : r.GetFieldValue<DateTimeOffset>(4), r.IsDBNull(5) ? null : r.GetFieldValue<DateTimeOffset>(5)));
         return list;
+    }
+
+    public async Task<IncidentDetail?> GetDetailAsync(Guid incidentId, CancellationToken ct = default)
+    {
+        await using var conn = await _db.OpenAsync(ct);
+        IncidentDetail? head;
+        await using (var cmd = new NpgsqlCommand("""
+            SELECT id, reference_code, status_code, classification_code, description, discovered_at, awareness_at, notification_deadline_at,
+                   closed_at IS NOT NULL, (SELECT count(*) FROM ps.incident_assessments a WHERE a.incident_id = i.id)
+            FROM ps.incidents i WHERE id = $1
+            """, conn))
+        {
+            cmd.Parameters.AddWithValue(incidentId);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (!await r.ReadAsync(ct)) return null;
+            head = new IncidentDetail(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetFieldValue<DateTimeOffset>(5),
+                r.IsDBNull(6) ? null : r.GetFieldValue<DateTimeOffset>(6), r.IsDBNull(7) ? null : r.GetFieldValue<DateTimeOffset>(7),
+                r.GetBoolean(8), (int)r.GetInt64(9), Array.Empty<IncidentActionRow>());
+        }
+        var actions = new List<IncidentActionRow>();
+        await using (var cmd = new NpgsqlCommand("SELECT occurred_at, type_code, description, protocol_reference FROM ps.incident_actions WHERE incident_id = $1 ORDER BY occurred_at, created_at", conn))
+        {
+            cmd.Parameters.AddWithValue(incidentId);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct)) actions.Add(new IncidentActionRow(r.GetFieldValue<DateTimeOffset>(0), r.GetString(1), r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3)));
+        }
+        return head with { Actions = actions };
     }
 }

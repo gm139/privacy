@@ -29,7 +29,7 @@ public partial class App : Application
             }
             var login = new LoginWindow(services, practice.Value);
             if (login.ShowDialog() != true || login.Result is not { UserId: not null } r) { Shutdown(0); return; }
-            var main = new MainWindow(services, practice.Value, r.DisplayName ?? "");
+            var main = new MainWindow(services, practice.Value, r.UserId.Value, r.DisplayName ?? "");
             main.Closed += (_, _) => Shutdown(0);
             main.Show();
         }

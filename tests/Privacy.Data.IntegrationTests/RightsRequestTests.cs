@@ -93,4 +93,29 @@ public class RightsRequestTests
         await Assert.ThrowsAsync<PostgresException>(() =>
             svc.ExtendAsync(Guid.NewGuid(), id, user, limit.AddDays(1), "Oltre il limite", null));
     }
+
+    [Fact]
+    public async Task Detail_ShowsRightsDecisionsAndEvents()
+    {
+        if (Conn is null) return;
+        var (svc, practice, user, _) = await SetupAsync();
+        var id = await svc.RegisterAsync(Cmd(practice, user, rights: new[] { "access", "erasure" }));
+        await svc.DecideAsync(Guid.NewGuid(), id, user, "access", "granted", null, DateTimeOffset.UtcNow);
+        var d = (await svc.GetDetailAsync(id))!;
+        Assert.Equal(2, d.Rights.Count);
+        Assert.True(d.Rights.Single(r => r.RightCode == "access").ResponseSent);
+        Assert.False(d.Rights.Single(r => r.RightCode == "erasure").Decided);
+        Assert.Equal(new[] { "received", "decision" }, d.Events.Select(e => e.TypeCode).ToArray());
+        Assert.False(d.Closed);
+        Assert.Null(await svc.GetDetailAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task Catalogs_AreReadable_AndOnlyWhitelistedTables()
+    {
+        if (Conn is null) return;
+        var cat = new CatalogService(new Db(Conn));
+        Assert.Contains((await cat.GetAsync("cat_right")), i => i.Code == "access");
+        await Assert.ThrowsAsync<ArgumentException>(() => cat.GetAsync("users"));
+    }
 }

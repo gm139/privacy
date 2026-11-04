@@ -4,15 +4,20 @@
         Title="Privacy Studio" Width="900" Height="560" WindowStartupLocation="CenterScreen">
     <DockPanel Margin="16">
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="_Aggiorna" Click="OnRefresh" TabIndex="0"/>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="NewRequestButton" Content="_Nuova richiesta…" Click="OnNewRequest" TabIndex="0" Margin="0,0,8,0"/>
+                <Button x:Name="NewIncidentButton" Content="Nuovo _incidente…" Click="OnNewIncident" TabIndex="1" Margin="0,0,8,0"/>
+                <Button x:Name="OpenButton" Content="A_pri selezionata" Click="OnOpen" TabIndex="2" Margin="0,0,8,0"/>
+                <Button x:Name="RefreshButton" Content="_Aggiorna" Click="OnRefresh" TabIndex="3"/>
+            </StackPanel>
             <TextBlock x:Name="HeaderText" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
         </DockPanel>
         <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,8,0,0" Foreground="#B00020" TextWrapping="Wrap"
                    AutomationProperties.LiveSetting="Polite"/>
-        <TabControl TabIndex="1">
+        <TabControl x:Name="Tabs" TabIndex="4">
             <TabItem Header="Richieste in scadenza">
                 <DataGrid x:Name="RequestsGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column"
-                          AutomationProperties.Name="Richieste dei diritti in scadenza">
+                          AutomationProperties.Name="Richieste dei diritti in scadenza" SelectionMode="Single" MouseDoubleClick="OnOpen">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Riferimento" Binding="{Binding Reference}" Width="140"/>
                         <DataGridTextColumn Header="Stato" Binding="{Binding Status}" Width="180"/>
@@ -24,7 +29,7 @@
             </TabItem>
             <TabItem Header="Incidenti aperti">
                 <DataGrid x:Name="IncidentsGrid" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column"
-                          AutomationProperties.Name="Incidenti aperti">
+                          AutomationProperties.Name="Incidenti aperti" SelectionMode="Single" MouseDoubleClick="OnOpen">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Riferimento" Binding="{Binding Reference}" Width="140"/>
                         <DataGridTextColumn Header="Stato" Binding="{Binding Status}" Width="160"/>
