@@ -66,6 +66,7 @@ var
   PgExists: Boolean;
   LogFile: String;
   Failed: Boolean;
+  LastCode: Integer;
 
 function DryRun: Boolean;
 begin
@@ -181,6 +182,51 @@ begin
   end;
 end;
 
+{ ---------- diagnostica ---------- }
+function WindowsUserExists(const Name: String): Boolean;
+var
+  Code: Integer;
+begin
+  Result := Exec(ExpandConstant('{cmd}'), '/S /C "net user ' + Name + ' >nul 2>&1"', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+end;
+
+function DirNotEmpty(const Dir: String): Boolean;
+var
+  FR: TFindRec;
+begin
+  Result := False;
+  if DirExists(Dir) then
+    if FindFirst(Dir + '\*', FR) then
+    try
+      repeat
+        if (FR.Name <> '.') and (FR.Name <> '..') then Result := True;
+      until Result or not FindNext(FR);
+    finally
+      FindClose(FR);
+    end;
+end;
+
+{ copia nella cartella del programma i registri dell'installatore di PostgreSQL (di solito in %TEMP%) }
+procedure CollectPgLogs;
+var
+  FR: TFindRec;
+  Tmp, Dest: String;
+begin
+  Tmp := ExtractFilePath(RemoveBackslash(ExpandConstant('{tmp}')));
+  Dest := ExpandConstant('{app}\logs');
+  ForceDirectories(Dest);
+  if FileExists(Tmp + 'install-postgresql.log') then CopyFile(Tmp + 'install-postgresql.log', Dest + '\install-postgresql.log', False);
+  if FindFirst(Tmp + 'bitrock_installer*.log', FR) then
+  try
+    repeat
+      CopyFile(Tmp + FR.Name, Dest + '\' + FR.Name, False);
+    until not FindNext(FR);
+  finally
+    FindClose(FR);
+  end;
+  Note('Registri di PostgreSQL copiati in ' + Dest);
+end;
+
 { ---------- esecuzione ---------- }
 function RunStep(const Desc, FileName, Params: String): Boolean;
 var
@@ -189,6 +235,7 @@ begin
   Note('> ' + Desc);
   if DryRun then begin Result := True; exit; end;
   Result := Exec(FileName, Params, '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+  LastCode := Code;
   if not Result then Note('  ERRORE: codice ' + IntToStr(Code));
 end;
 
@@ -251,10 +298,35 @@ begin
   { 1. PostgreSQL }
   if not PgExists then
   begin
+    { residui di un'installazione precedente rimasta a metà: fanno fallire l'installatore di PostgreSQL }
+    if not DryRun then
+    begin
+      if WindowsUserExists('postgres') then
+      begin
+        Note('Esiste già un utente Windows «postgres» ma PostgreSQL 17 non risulta installato.');
+        MsgBox('Sul computer esiste già un utente Windows chiamato «postgres», ma PostgreSQL 17 non risulta installato: di solito è il residuo di un''installazione interrotta. ' +
+               'L''installatore di PostgreSQL in questo caso fallisce.' + #13#10 + #13#10 +
+               'Da un prompt dei comandi come amministratore: net user postgres /delete' + #13#10 +
+               'poi eliminare la cartella ' + ExpandConstant('{autopf}') + '\PostgreSQL (se esiste) e rieseguire questo programma di installazione.', mbError, MB_OK);
+        Failed := True; exit;
+      end;
+      if DirNotEmpty(ExpandConstant('{autopf}\PostgreSQL\17')) then
+      begin
+        Note('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' esiste già e non è vuota.');
+        MsgBox('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' esiste già e non è vuota, ma PostgreSQL 17 non risulta installato. ' +
+               'Probabile residuo di un''installazione interrotta: eliminarla (dopo aver controllato che non contenga dati da conservare) e rieseguire.', mbError, MB_OK);
+        Failed := True; exit;
+      end;
+    end;
     if not RunStep('Installazione di PostgreSQL 17 (qualche minuto)', ExpandConstant('{tmp}\postgresql-17.11-1-windows-x64.exe'),
       '--mode unattended --unattendedmodeui none --superpassword "' + SuperPwd + '" --servicename {#PgServiceName} --serverport 5432 ' +
-      '--enable-components server,commandlinetools --disable-components pgAdmin,stackbuilder') then
-    begin Failed := True; exit; end;
+      '--enable-components server,commandlinetools --disable-components pgAdmin,stackbuilder ' +
+      '--debuglevel 4 --debugtrace "' + ExpandConstant('{app}') + '\postgresql-installer-debug.log"') then
+    begin
+      Note('PostgreSQL: l''installatore ha restituito il codice ' + IntToStr(LastCode));
+      if not DryRun then CollectPgLogs;
+      Failed := True; exit;
+    end;
     if not DryRun then RegQueryStringValue(HKLM64, '{#PgRegKey}', 'Base Directory', PgBase);
   end;
   Note('PostgreSQL in: ' + PgBase);
@@ -333,8 +405,9 @@ begin
     if DryRun then CopyFile(LogFile, ExpandConstant('{app}\dryrun.log'), False)
     else CopyFile(LogFile, ExpandConstant('{app}\installazione.log'), False);
     if Failed then
-      MsgBox('L''installazione del database non è andata a buon fine. Il programma è stato copiato ma non è utilizzabile.' + #13#10 +
-             'Il dettaglio è in: ' + ExpandConstant('{app}') + '\installazione.log' + #13#10 + 'Contattare l''assistenza.', mbError, MB_OK);
+      MsgBox('L''installazione del database non è andata a buon fine (ultimo codice di errore: ' + IntToStr(LastCode) + '). Il programma è stato copiato ma non è utilizzabile.' + #13#10 +
+             'Il dettaglio è in: ' + ExpandConstant('{app}') + '\installazione.log' + #13#10 +
+             'Registri di PostgreSQL (se disponibili) in: ' + ExpandConstant('{app}') + '\logs' + #13#10 + 'Inviarli all''assistenza.', mbError, MB_OK);
   end;
 end;
 
