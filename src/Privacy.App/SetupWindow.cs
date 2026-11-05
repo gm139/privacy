@@ -41,9 +41,8 @@ public sealed class SetupWindow : DialogForm
             AddNote("Scegli il nome utente e la password con cui il medico entra nel programma. La password deve avere almeno 12 caratteri. Non esiste un modo per recuperarla se dimenticata: annotarla in un luogo sicuro.");
             User = AddText("Nome _utente per l'accesso");
             DisplayName = AddText("Nome mostrato nel programma (es. Dott. Rossi)");
-            Pass = AddPassword("_Password (almeno 12 caratteri)", withToggle: true);
-            Pass2 = AddPassword("_Ripetere la password", withToggle: false, linked: Pass);
-            Pass.SetLinked(Pass2);
+            Pass = AddPassword("_Password (almeno 12 caratteri)", withToggle: false);
+            Pass2 = AddPassword("_Ripetere la password", withToggle: true, linked: Pass);   // la casella sotto il secondo campo mostra entrambe
             AddNote("Dopo il primo accesso conviene esportare le chiavi di recupero (scheda Backup).");
             OkText = "_Crea lo studio";
             StayOpenOnce();
