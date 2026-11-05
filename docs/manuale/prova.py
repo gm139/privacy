@@ -25,7 +25,7 @@ def story():
         ("A2", "Fare un'<b>istantanea</b> della macchina, chiamata \"pulita\".", "Si può tornare a questo stato dopo ogni prova."),
         ("A3", "In PowerShell: <font name='UM'>Get-Service postgres*</font> e <font name='UM'>Test-Path \"C:\\Program Files\\PostgreSQL\"</font>.", "Nessun servizio; <font name='UM'>False</font>."),
         ("A4", "<font name='UM'>netstat -ano | findstr :5432</font>", "Nessun risultato: la porta 5432 è libera."),
-        ("A5", "Copiare nella macchina il file <font name='UM'>PrivacyStudio-Setup-0.9.0.exe</font> (circa 410 MB) in <font name='UM'>C:\\Temp</font>. Confrontare l'impronta: <font name='UM'>Get-FileHash C:\\Temp\\PrivacyStudio-Setup-0.9.0.exe</font>.", "L'impronta SHA-256 è <font name='UM'>BE6338CA7539683AFE18E25B6270030A2C01DB4609F7298CDC01E59BB1ECF534</font> (se l'installatore è stato ricostruito, usare quella nuova)."),
+        ("A5", "Copiare nella macchina il file <font name='UM'>PrivacyStudio-Setup-0.9.0.exe</font> (circa 410 MB) in <font name='UM'>C:\\Temp</font>. Confrontare l'impronta: <font name='UM'>Get-FileHash C:\\Temp\\PrivacyStudio-Setup-0.9.0.exe</font>.", "L'impronta SHA-256 è <font name='UM'>0748E1D11576128FFAACDC5714CE78DFB0AD73CA8334B1DCEBC32063BE327B98</font> (se l'installatore è stato ricostruito, usare quella nuova)."),
     ])
 
     s += H2("B. Installazione normale")
