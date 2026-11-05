@@ -25,7 +25,7 @@ def story():
         ("A2", "Fare un'<b>istantanea</b> della macchina, chiamata \"pulita\".", "Si può tornare a questo stato dopo ogni prova."),
         ("A3", "In PowerShell: <font name='UM'>Get-Service postgres*</font> e <font name='UM'>Test-Path \"C:\\Program Files\\PostgreSQL\"</font>.", "Nessun servizio; <font name='UM'>False</font>."),
         ("A4", "<font name='UM'>netstat -ano | findstr :5432</font>", "Nessun risultato: la porta 5432 è libera."),
-        ("A5", "Copiare nella macchina il file <font name='UM'>PrivacyStudio-Setup-0.9.0.exe</font> (circa 410 MB) in <font name='UM'>C:\\Temp</font>. Confrontare l'impronta: <font name='UM'>Get-FileHash C:\\Temp\\PrivacyStudio-Setup-0.9.0.exe</font>.", "L'impronta SHA-256 è <font name='UM'>0748E1D11576128FFAACDC5714CE78DFB0AD73CA8334B1DCEBC32063BE327B98</font> (se l'installatore è stato ricostruito, usare quella nuova)."),
+        ("A5", "Copiare nella macchina il file <font name='UM'>PrivacyStudio-Setup-0.9.0.exe</font> (circa 410 MB) in <font name='UM'>C:\\Temp</font>. Confrontare l'impronta: <font name='UM'>Get-FileHash C:\\Temp\\PrivacyStudio-Setup-0.9.0.exe</font>.", "L'impronta SHA-256 è <font name='UM'>0D31E5056A45951D8206C25B3060E4EFAEB6859AC6BA9C383AA7518DB91006B4</font> (se l'installatore è stato ricostruito, usare quella nuova)."),
     ])
 
     s += H2("B. Installazione normale")
@@ -33,9 +33,9 @@ def story():
             "Annotare l'ora di inizio e di fine.")]
     s += rows([
         ("B1", "Confermare la richiesta di Windows (consenso amministratore).", "Windows mostra l'avviso \"editore sconosciuto\" (previsto: il programma non è firmato). La procedura guidata è in italiano."),
-        ("B2", "Nella pagina della password del database: provare prima una password <b>corta</b>, poi due password <b>diverse</b>, poi una con un carattere non ammesso (per esempio <font name='UM'>%</font>).", "In ogni caso un messaggio chiaro e non si va avanti."),
+        ("B2", "Nella pagina della password del database: provare prima una password <b>corta</b>, poi due password <b>diverse</b>, poi una con un carattere non ammesso (per esempio <font name='UM'>%</font>). Provare anche la casella <b>Mostra le password</b>.", "In ogni caso un messaggio chiaro e non si va avanti. La casella mostra e nasconde i caratteri di entrambi i campi."),
         ("B3", "Inserire una password valida di prova (es. <font name='UM'>ProvaPassword-123</font>) due volte. Annotarla.", "Si va avanti."),
-        ("B4", "Pagina dei backup: lasciare vuota la copia esterna e premere avanti.", "Avviso che il backup resterebbe sullo stesso computer; si può rifiutare e tornare indietro."),
+        ("B4", "Pagina dei backup: lasciare vuota la copia esterna e premere avanti. Poi spuntare «Non indicare ora la copia esterna» e riprovare.", "Senza né il percorso né la spunta: messaggio che chiede di scegliere. Con la spunta: avviso sul rischio con scelta Sì/No; rispondendo No si resta nella pagina."),
         ("B5", "Indicare come copia esterna <font name='UM'>D:\\CopiaEsterna</font>. Proseguire e attendere.", "Nessun errore. L'installazione di PostgreSQL dura di solito diversi minuti: annotare quanto."),
         ("B6", "Al termine, controllare la cartella del programma (di norma <font name='UM'>C:\\Program Files\\PrivacyStudio</font>).", "Presenti l'eseguibile, la cartella <font name='UM'>db</font> con 5 file .sql, la cartella <font name='UM'>docs</font> con il manuale e <font name='UM'>installazione.log</font>."),
         ("B7", "Aprire <font name='UM'>installazione.log</font>.", "Elenca i passaggi in ordine, termina con \"Fatto.\" e <b>non contiene password</b>."),
@@ -47,7 +47,7 @@ def story():
         ("B13", "<font name='UM'>icacls \"$env:LOCALAPPDATA\\PrivacyStudio\\connection.txt\"</font> e <font name='UM'>icacls C:\\ProgramData\\PrivacyStudio\\migrator.secret</font>", "Il primo: solo l'utente, Administrators e SYSTEM. Il secondo: solo Administrators e SYSTEM."),
         ("B14", "Aprire <font name='UM'>%LOCALAPPDATA%\\PrivacyStudio\\config.json</font>.", "Percorsi dei backup (con <font name='UM'>D:\\CopiaEsterna</font>) e <font name='UM'>pgBinDir</font> corretti."),
         ("B15", "Avviare Privacy Studio dal collegamento nel menu Start.", "Si apre la finestra <b>Prima configurazione</b> (nessun errore di connessione)."),
-        ("B16", "Compilare la configurazione con dati inventati e accedere.", "Si apre la finestra principale con le schede."),
+        ("B16", "Compilare la configurazione con dati inventati: nel passaggio 1 i dati dello studio, nel passaggio 2 nome utente e password (provare la casella «Mostra la password»; provare anche una password corta) e accedere.", "Il passaggio 2 mostra chiaramente i campi di nome utente e password. Una password sotto i 12 caratteri è rifiutata con un messaggio. Poi si apre la finestra principale con le schede."),
         ("B17", "Scheda <b>Backup</b>: il pulsante \"Esegui backup ora\" è attivo?", "Sì (significa che <font name='UM'>pgBinDir</font> è stato riconosciuto)."),
         ("B18", "<b>Esporta chiavi di recupero…</b> con una frase di prova; salvare il file su D:.", "File <font name='UM'>.pskr</font> creato."),
         ("B19", "<b>Esegui backup ora</b>.", "Esito \"Riuscito\" con data di verifica; i file <font name='UM'>.psbk</font> sono sia in <font name='UM'>Documenti\\Backup Privacy Studio</font> sia in <font name='UM'>D:\\CopiaEsterna</font>."),

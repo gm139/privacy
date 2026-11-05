@@ -147,12 +147,17 @@ begin
   ExtBrowse.Enabled := not ExtCheck.Checked;
 end;
 
+function PwdCount: Integer;
+begin
+  if PgExists then Result := 1 else Result := 2;
+end;
+
 procedure ShowPwdClick(Sender: TObject);
 var
   i: Integer;
 begin
   { mostra o nasconde quanto scritto nei campi password }
-  for i := 0 to PgPage.EditCount - 1 do
+  for i := 0 to PwdCount - 1 do
     TPasswordEdit(PgPage.Edits[i]).Password := not ShowPwd.Checked;
 end;
 
@@ -199,7 +204,7 @@ begin
   ShowPwd.Parent := PgPage.Surface;
   ShowPwd.Caption := 'Mostra le password';
   ShowPwd.Left := 0;
-  ShowPwd.Top := PgPage.Edits[PgPage.EditCount - 1].Top + PgPage.Edits[PgPage.EditCount - 1].Height + ScaleY(14);
+  ShowPwd.Top := PgPage.Edits[PwdCount - 1].Top + PgPage.Edits[PwdCount - 1].Height + ScaleY(14);
   ShowPwd.Width := PgPage.SurfaceWidth;
   ShowPwd.Height := ScaleY(20);
   ShowPwd.OnClick := @ShowPwdClick;
