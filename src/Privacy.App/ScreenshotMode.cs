@@ -27,13 +27,15 @@ internal static class ScreenshotMode
         var setupSvc = new SetupService(s.Db);
         if (await setupSvc.IsConfiguredAsync()) { Console.Error.WriteLine("il database dimostrativo non è vuoto"); return 2; }
 
-        // 01 - prima configurazione (compilata con dati inventati)
+        // 01 - prima configurazione (due passaggi, compilati con dati inventati)
         var setup = new SetupWindow(s);
         setup.PracticeName.Text = "Studio Medico Rossi"; setup.Controller.Text = "Dott. Mario Rossi"; setup.Identifier.Text = "RSSMRA70A01B157X";
         setup.Address.Text = "Via Roma 10, 25100 Brescia (BS)"; setup.PrivacyContact.Text = "privacy@studio-rossi.example"; setup.Phone.Text = "030 0000000";
-        setup.User.Text = "dott.rossi"; setup.DisplayName.Text = "Dott. Rossi"; setup.Pass.Password = "frase di prova molto lunga 123"; setup.Pass2.Password = "frase di prova molto lunga 123";
         await Snap(setup, "01-prima-configurazione");
-        if (!await setup.RunSubmitAsync() || setup.Result is null) { Console.Error.WriteLine("setup fallito: " + setup.ErrorText); return 3; }
+        if (!await setup.RunSubmitAsync()) { Console.Error.WriteLine("setup passaggio 1 fallito: " + setup.ErrorText); return 3; }
+        setup.User.Text = "dott.rossi"; setup.DisplayName.Text = "Dott. Rossi"; setup.Pass.Value = "frase di prova molto lunga 123"; setup.Pass2.Value = "frase di prova molto lunga 123";
+        await Snap(setup, "01b-prima-configurazione-accesso");
+        if (!await setup.RunSubmitAsync() || setup.Result is null) { Console.Error.WriteLine("setup passaggio 2 fallito: " + setup.ErrorText); return 3; }
         var (practice, user) = setup.Result.Value;
         setup.Close();
 

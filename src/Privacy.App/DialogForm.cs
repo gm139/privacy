@@ -53,12 +53,20 @@ public class DialogForm : Window
     /// <summary>Restituisce un messaggio d'errore da mostrare, oppure null se l'operazione è riuscita (la finestra si chiude).</summary>
     public Func<Task<string?>>? Submit { get; set; }
 
+    /// <summary>Testo del pulsante di conferma (per i moduli in più passaggi).</summary>
+    public string OkText { set => _ok.Content = value; }
+    private bool _stay;
+    /// <summary>Svuota i campi per mostrare il passaggio successivo dello stesso modulo.</summary>
+    protected void ClearFields() { _fields.Children.Clear(); _tab = 0; }
+    /// <summary>Alla prossima conferma riuscita la finestra NON si chiude (passaggio intermedio).</summary>
+    protected void StayOpenOnce() => _stay = true;
+
     /// <summary>Ultimo messaggio d'errore mostrato (per le prove automatiche).</summary>
     public string ErrorText => _error.Text;
 
     public DialogForm(string title, double width = 500)
     {
-        FontSize = 14; Title = title; Width = width; MaxHeight = 760; SizeToContent = SizeToContent.Height;
+        FontSize = 14; Title = title; Width = width; MaxHeight = Math.Min(760, SystemParameters.WorkArea.Height - 40); SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ResizeMode = ResizeMode.NoResize;
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(20, 0, 20, 16), Children = { _ok, _cancel } };
         var bottom = new StackPanel { Children = { new Border { Child = _error, Margin = new Thickness(20, 0, 20, 0) }, buttons } };
@@ -77,6 +85,7 @@ public class DialogForm : Window
         try
         {
             var err = await Submit();
+            if (err is null && _stay) { _stay = false; return true; }
             if (err is null) { if (IsVisible) { try { DialogResult = true; } catch (InvalidOperationException) { Close(); } } return true; }
             _error.Text = err;
         }
@@ -132,6 +141,18 @@ public class DialogForm : Window
         _fields.Children.Add(Lbl(label, control)); _fields.Children.Add(control);
     }
 
+    /// <summary>Campo password con casella «Mostra la password» (se <paramref name="withToggle"/>); il secondo campo di una coppia si collega al primo.</summary>
+    public PasswordField AddPassword(string label, bool withToggle = true, PasswordField? linked = null)
+    {
+        var f = new PasswordField(linked);
+        f.Hidden.TabIndex = _tab++; f.Shown.TabIndex = _tab++;
+        System.Windows.Automation.AutomationProperties.SetName(f.Hidden, label.Replace("_", ""));
+        System.Windows.Automation.AutomationProperties.SetName(f.Shown, label.Replace("_", "") + " (visibile)");
+        _fields.Children.Add(Lbl(label, f.Hidden)); _fields.Children.Add(f.Host);
+        if (withToggle) { f.Toggle.TabIndex = _tab++; _fields.Children.Add(f.Toggle); }
+        return f;
+    }
+
     public ComboBox AddCombo(string label, IEnumerable<CatalogItem> items)
     {
         var box = new ComboBox { ItemsSource = items.ToList(), DisplayMemberPath = nameof(CatalogItem.Label), SelectedValuePath = nameof(CatalogItem.Code), TabIndex = _tab++ };
@@ -171,4 +192,38 @@ public class DialogForm : Window
     }
 
     public void AddNote(string text) => _fields.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), Foreground = ThemeManager.Muted });
+}
+
+/// <summary>Campo password con possibilità di vedere quanto scritto.</summary>
+public sealed class PasswordField
+{
+    public PasswordBox Hidden { get; } = new();
+    public TextBox Shown { get; } = new() { Visibility = Visibility.Collapsed };
+    public CheckBox Toggle { get; } = new() { Content = "Mostra la password", Margin = new Thickness(0, 6, 0, 0) };
+    public Grid Host { get; } = new();
+    private PasswordField? _linked;
+    public void SetLinked(PasswordField other) => _linked = other;
+
+    public PasswordField(PasswordField? linked)
+    {
+        _linked = linked;
+        Host.Children.Add(Hidden); Host.Children.Add(Shown);
+        Toggle.Checked += (_, _) => Apply(true); Toggle.Unchecked += (_, _) => Apply(false);
+    }
+
+    public bool Visible => Shown.Visibility == Visibility.Visible;
+
+    public string Value
+    {
+        get => Visible ? Shown.Text : Hidden.Password;
+        set { Hidden.Password = value; Shown.Text = value; }
+    }
+
+    private void Apply(bool show) { SetVisible(show); _linked?.SetVisible(show); }
+
+    internal void SetVisible(bool show)
+    {
+        if (show) { Shown.Text = Hidden.Password; Shown.Visibility = Visibility.Visible; Hidden.Visibility = Visibility.Collapsed; }
+        else { Hidden.Password = Shown.Text; Hidden.Visibility = Visibility.Visible; Shown.Visibility = Visibility.Collapsed; }
+    }
 }

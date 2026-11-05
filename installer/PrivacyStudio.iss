@@ -61,7 +61,11 @@ Filename: "{app}\Privacy.App.exe"; Description: "Avvia {#AppName}"; Flags: nowai
 [Code]
 var
   PgPage: TInputQueryWizardPage;
-  BackupPage: TInputDirWizardPage;
+  BkPage: TWizardPage;
+  BkEdit, ExtEdit: TNewEdit;
+  BkBrowse, ExtBrowse: TNewButton;
+  ExtCheck: TNewCheckBox;
+  ShowPwd: TNewCheckBox;
   PgBase: String;
   PgExists: Boolean;
   LogFile: String;
@@ -108,8 +112,69 @@ begin
     if Pos(S[i], '"%^&|<>!`''') > 0 then Result := False;
 end;
 
+{ ---------- cartelle dei backup ---------- }
+function LocalDir: String;
+begin
+  Result := Trim(BkEdit.Text);
+end;
+
+function ExtDir: String;
+begin
+  if ExtCheck.Checked then Result := '' else Result := Trim(ExtEdit.Text);
+end;
+
+procedure BrowseInto(Edit: TNewEdit);
+var
+  D: String;
+begin
+  D := Edit.Text;
+  if BrowseForFolder('Scegliere la cartella', D, True) then Edit.Text := D;
+end;
+
+procedure BrowseLocalClick(Sender: TObject);
+begin
+  BrowseInto(BkEdit);
+end;
+
+procedure BrowseExtClick(Sender: TObject);
+begin
+  BrowseInto(ExtEdit);
+end;
+
+procedure ExtCheckClick(Sender: TObject);
+begin
+  ExtEdit.Enabled := not ExtCheck.Checked;
+  ExtBrowse.Enabled := not ExtCheck.Checked;
+end;
+
+procedure ShowPwdClick(Sender: TObject);
+var
+  i: Integer;
+begin
+  { mostra o nasconde quanto scritto nei campi password }
+  for i := 0 to PgPage.EditCount - 1 do
+    TPasswordEdit(PgPage.Edits[i]).Password := not ShowPwd.Checked;
+end;
+
+procedure MakeLabel(Page: TWizardPage; const Text: String; Top: Integer);
+var
+  L: TNewStaticText;
+begin
+  L := TNewStaticText.Create(Page);
+  L.Parent := Page.Surface;
+  L.Caption := Text;
+  L.Left := 0;
+  L.Top := Top;
+  L.Width := Page.SurfaceWidth;
+  L.AutoSize := False;
+  L.WordWrap := True;
+  L.Height := ScaleY(32);
+end;
+
 { ---------- creazione guidata ---------- }
 procedure InitializeWizard;
+var
+  W, BtnW: Integer;
 begin
   LogFile := ExpandConstant('{tmp}\privacy-setup.log');
   PgExists := RegKeyExists(HKLM64, '{#PgRegKey}');
@@ -129,14 +194,48 @@ begin
     PgPage.Add('Password:', True);
     PgPage.Add('Ripetere la password:', True);
   end;
-  BackupPage := CreateInputDirPage(PgPage.ID, 'Copie di sicurezza', 'Dove salvare i backup',
-    'La copia esterna deve trovarsi su un supporto DIVERSO dal computer (disco esterno o altra macchina): senza, il backup non protegge da guasto, furto o incendio. Si può cambiare più tardi in config.json.',
-    False, '');
-  BackupPage.Add('Cartella dei backup sul computer:');
-  BackupPage.Add('Copia esterna (consigliata):');
-  BackupPage.Values[0] := ExpandConstant('{userdocs}\Backup Privacy Studio');
-  BackupPage.Values[1] := ExpandConstant('{param:EXTERNALDIR|}');
-  { installazioni non interattive (assistenza tecnica): /PGPASSWORD=... /EXTERNALDIR=... }
+  { casella «Mostra le password» sotto i campi }
+  ShowPwd := TNewCheckBox.Create(PgPage);
+  ShowPwd.Parent := PgPage.Surface;
+  ShowPwd.Caption := 'Mostra le password';
+  ShowPwd.Left := 0;
+  ShowPwd.Top := PgPage.Edits[PgPage.EditCount - 1].Top + PgPage.Edits[PgPage.EditCount - 1].Height + ScaleY(14);
+  ShowPwd.Width := PgPage.SurfaceWidth;
+  ShowPwd.Height := ScaleY(20);
+  ShowPwd.OnClick := @ShowPwdClick;
+
+  { pagina dei backup: la copia esterna è consigliata ma si può rimandare }
+  BkPage := CreateCustomPage(PgPage.ID, 'Copie di sicurezza', 'Dove salvare i backup');
+  W := BkPage.SurfaceWidth;
+  BtnW := ScaleX(90);
+  MakeLabel(BkPage, 'Cartella dei backup sul computer:', 0);
+  BkEdit := TNewEdit.Create(BkPage);
+  BkEdit.Parent := BkPage.Surface;
+  BkEdit.Left := 0; BkEdit.Top := ScaleY(18); BkEdit.Width := W - BtnW - ScaleX(8);
+  BkEdit.Text := ExpandConstant('{userdocs}\Backup Privacy Studio');
+  BkBrowse := TNewButton.Create(BkPage);
+  BkBrowse.Parent := BkPage.Surface;
+  BkBrowse.Caption := 'Sfoglia...'; BkBrowse.Left := W - BtnW; BkBrowse.Top := ScaleY(16); BkBrowse.Width := BtnW; BkBrowse.Height := ScaleY(24);
+  BkBrowse.OnClick := @BrowseLocalClick;
+
+  MakeLabel(BkPage, 'Copia esterna (consigliata): un supporto DIVERSO dal computer, come un disco esterno o un''altra macchina. Senza, il backup non protegge da guasto, furto o incendio.', ScaleY(62));
+  ExtEdit := TNewEdit.Create(BkPage);
+  ExtEdit.Parent := BkPage.Surface;
+  ExtEdit.Left := 0; ExtEdit.Top := ScaleY(100); ExtEdit.Width := W - BtnW - ScaleX(8);
+  ExtEdit.Text := ExpandConstant('{param:EXTERNALDIR|}');
+  ExtBrowse := TNewButton.Create(BkPage);
+  ExtBrowse.Parent := BkPage.Surface;
+  ExtBrowse.Caption := 'Sfoglia...'; ExtBrowse.Left := W - BtnW; ExtBrowse.Top := ScaleY(98); ExtBrowse.Width := BtnW; ExtBrowse.Height := ScaleY(24);
+  ExtBrowse.OnClick := @BrowseExtClick;
+  ExtCheck := TNewCheckBox.Create(BkPage);
+  ExtCheck.Parent := BkPage.Surface;
+  ExtCheck.Caption := 'Non indicare ora la copia esterna (si può aggiungere più tardi in config.json)';
+  ExtCheck.Left := 0; ExtCheck.Top := ScaleY(134); ExtCheck.Width := W; ExtCheck.Height := ScaleY(20);
+  ExtCheck.Checked := ExpandConstant('{param:NOEXTERNAL|0}') = '1';
+  ExtCheck.OnClick := @ExtCheckClick;
+  ExtCheckClick(nil);
+
+  { installazioni non interattive (assistenza tecnica): /PGPASSWORD=... /EXTERNALDIR=... /NOEXTERNAL=1 }
   PgPage.Values[0] := ExpandConstant('{param:PGPASSWORD|}');
   if not PgExists then PgPage.Values[1] := PgPage.Values[0];
 end;
@@ -168,16 +267,26 @@ begin
       end;
     end;
   end;
-  if CurPageID = BackupPage.ID then
+  if CurPageID = BkPage.ID then
   begin
-    if Trim(BackupPage.Values[0]) = '' then
+    if LocalDir = '' then
     begin
-      MsgBox('Indicare la cartella dei backup.', mbError, MB_OK);
+      MsgBox('Indicare la cartella dei backup sul computer.', mbError, MB_OK);
       Result := False;
     end
-    else if Trim(BackupPage.Values[1]) = '' then
-      Result := MsgBox('Non è stata indicata una copia esterna. Senza, i backup restano sullo stesso computer e non proteggono da guasto o furto. Continuare comunque?', mbConfirmation, MB_YESNO) = IDYES
-    else if CompareText(Copy(BackupPage.Values[1], 1, 3), Copy(ExpandConstant('{sys}'), 1, 3)) = 0 then
+    else if (not ExtCheck.Checked) and (Trim(ExtEdit.Text) = '') then
+    begin
+      MsgBox('Indicare la copia esterna, oppure spuntare «Non indicare ora la copia esterna».', mbError, MB_OK);
+      Result := False;
+    end
+    else if ExtCheck.Checked then
+      Result := MsgBox('Senza una copia esterna i backup restano sullo stesso computer e non proteggono da guasto, furto o incendio. Si può aggiungerla più tardi in config.json. Continuare senza?', mbConfirmation, MB_YESNO) = IDYES
+    else if (Length(ExtDir) >= 2) and (ExtDir[2] = ':') and not DirExists(Copy(ExtDir, 1, 3)) then
+    begin
+      MsgBox('L''unità indicata per la copia esterna non esiste o non è collegata.', mbError, MB_OK);
+      Result := False;
+    end
+    else if CompareText(Copy(ExtDir, 1, 3), Copy(ExpandConstant('{sys}'), 1, 3)) = 0 then
       Result := MsgBox('La copia esterna è sullo stesso disco di Windows. Continuare comunque?', mbConfirmation, MB_YESNO) = IDYES;
   end;
 end;
@@ -375,13 +484,13 @@ begin
     ForceDirectories(ExtractFileDir(ConnFile));
     Cs := 'Host=127.0.0.1;Port=5432;Database=privacy;Username=privacy_app;Password=' + AppPwd;
     SaveStringToFile(ConnFile, Cs, False);
-    Conf := '{ "ledgerPath": "' + JsonEsc(BackupPage.Values[0] + '\disposals.jsonl') + '",' + #13#10 +
-            '  "backupDir": "' + JsonEsc(BackupPage.Values[0]) + '",' + #13#10;
-    if Trim(BackupPage.Values[1]) <> '' then Conf := Conf + '  "externalBackupDir": "' + JsonEsc(BackupPage.Values[1]) + '",' + #13#10;
+    Conf := '{ "ledgerPath": "' + JsonEsc(LocalDir + '\disposals.jsonl') + '",' + #13#10 +
+            '  "backupDir": "' + JsonEsc(LocalDir) + '",' + #13#10;
+    if ExtDir <> '' then Conf := Conf + '  "externalBackupDir": "' + JsonEsc(ExtDir) + '",' + #13#10;
     Conf := Conf + '  "pgBinDir": "' + JsonEsc(PgBase + '\bin') + '" }';
     SaveStringToFile(ConfFile, Conf, False);
-    ForceDirectories(BackupPage.Values[0]);
-    if Trim(BackupPage.Values[1]) <> '' then ForceDirectories(BackupPage.Values[1]);
+    ForceDirectories(LocalDir);
+    if ExtDir <> '' then ForceDirectories(ExtDir);
     { password del ruolo di installazione (serve per gli aggiornamenti dello schema): file riservato agli amministratori }
     SecretDir := ExpandConstant('{commonappdata}\PrivacyStudio');
     ForceDirectories(SecretDir);
