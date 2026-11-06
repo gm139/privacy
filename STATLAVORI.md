@@ -1,7 +1,7 @@
 # Privacy Studio — Stato dei lavori
 
-Aggiornato: 6 novembre 2026 (ripresa dello sviluppo). Da aggiornare **a ogni fine sessione**.
-Versione applicativa: 0.9.0 · Branch `main` · 45 commit, albero pulito all'ultimo controllo.
+Aggiornato: 6 novembre 2026, sera. Da aggiornare **a ogni fine sessione**.
+Versione applicativa: 0.9.0 · Branch `main` · ultimo commit di codice `8844659` (l'ultimo commit può essere successivo: questo file).
 
 ## Fatto (da git e documenti)
 
@@ -21,17 +21,29 @@ Versione applicativa: 0.9.0 · Branch `main` · 45 commit, albero pulito all'ult
 - **Manuale PDF** (60 pagine, capitolo 0 sugli adempimenti GDPR) e **lista di prova dell'installazione** (PDF), generati da `docs/manuale/`.
 - **Installer Inno Setup** (`installer/PrivacyStudio.iss`) con diagnostica dell'installazione di PostgreSQL, password con «occhio», copia esterna facoltativa.
 
-## Sessione del 6 novembre (dopo la prova su Windows pulito)
+## Sessione del 6 novembre (dopo la prova su un PC Windows nuovo)
 
-- Copia esterna: **FACOLTATIVA** (decisione del titolare, 6/11). Campo vuoto = nessuna copia esterna, senza domande né blocchi; se indicata, si controlla che l'unità esista (avviso se è il disco di Windows). Una versione intermedia l'aveva resa obbligatoria: annullata. Il manuale (facoltativa) è quindi corretto.
-- PostgreSQL: con la chiave di registro ma senza `bin\psql.exe` = non installato. Se la cartella `Program Files\PostgreSQL\17` esiste ma non contiene file, l'installatore la elimina da sé (e toglie la chiave di registro orfana) prima di installare; con file presenti si ferma e spiega. (Prima versione non bastava: abortiva.)
-- **`tools/Pulisci-PC-di-prova.bat` DISATTIVATO (è uno stub)**: la versione precedente cancellava cartelle lette da `config.json` senza controlli e ha cancellato il sistema operativo di un PC di prova (6/11). Non reintrodurre cancellazioni da percorsi variabili. Per tornare a un PC pulito: Windows Sandbox o checkpoint di una macchina virtuale; eventuale nuovo script solo con elenco a secco di default e percorsi fissi. Vecchia descrizione: (copiato in `C:\privacy`): disinstalla tutto e cancella cartelle, utente `postgres`, registro. Rivisto: attende il disinstallatore di PostgreSQL (si rilancia da %TEMP%), riprova la cancellazione, mostra gli errori. La sola routine di cancellazione è stata provata su cartelle di prova, il resto no.
-- Installatore: elimina la cartella PostgreSQL 17 vuota anche se bloccata dai permessi (takeown/icacls) e rifiuta come cartella dei backup o copia esterna radici di disco, Windows, programmi, Documenti, Desktop, profilo. Compilato, **non provato**.
-- Installatore ricompilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync) e copiato in `C:\privacy`. **Non provato.**
+**Incidente:** la versione precedente di `tools/Pulisci-PC-di-prova.bat` cancellava cartelle lette da `config.json` senza controlli e ha cancellato il sistema operativo del PC di prova (nulla di importante, ma ore di ripristino). Ora il file è **uno stub che non fa nulla**. Non reintrodurre cancellazioni da percorsi variabili. Per tornare a un PC pulito si usa **Windows Sandbox** o il checkpoint di una macchina virtuale; un eventuale nuovo script solo con elenco a secco di default e percorsi fissi (vedi memoria `feedback-script-distruttivi`).
+
+Fatto nell'installatore (`installer/PrivacyStudio.iss`), compilato ma **non provato**:
+- Copia esterna **FACOLTATIVA** (decisione del titolare): campo vuoto = nessuna copia, senza domande; se indicata, si controlla che l'unità esista (avviso se è il disco di Windows). Una versione intermedia l'aveva resa obbligatoria: annullata.
+- Come cartella dei backup e copia esterna sono rifiutate radici di disco, Windows, Programmi, Documenti, Desktop e profilo dell'utente.
+- PostgreSQL: chiave di registro senza `bin\psql.exe` = non installato. Cartella `Program Files\PostgreSQL\17` presente ma senza file: viene eliminata (anche prendendo possesso con takeown/icacls se i permessi la bloccano) insieme alla chiave di registro orfana; con file presenti si ferma e spiega. Le due versioni precedenti non bastavano: sul PC di prova l'installazione abortiva ancora.
+- Ultimo installatore in `C:\privacy\PrivacyStudio-Setup-0.9.0.exe` (430088218 byte, 6/11 ore 20:34). Compilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync; SDK in `%LOCALAPPDATA%\Microsoft\dotnet-sdk8`, ISCC in `%LOCALAPPDATA%\Programs\InnoSetup`).
+
+## Da fare domani (7 novembre)
+
+1. **Scegliere come portare i file al PC di prova** (un Huawei con solo Windows, a casa, NON nella tailnet): cartella condivisa `\\lenmau\privacy` (consigliata, la condivisione la attiva il titolare), chiavetta USB, oppure Tailscale/Taildrop (non consigliato: lo collegherebbe a NAS e server). Non toccare `bardini-evo-x3` né le altre macchine.
+2. **Provare l'installatore** sul PC di prova (o meglio in Windows Sandbox / VM con checkpoint; la Sandbox richiede Windows Pro e perde tutto alla chiusura: per la prova del ripristino T24 tenere il backup in una cartella condivisa dedicata). Casi da osservare: cartella `PostgreSQL\17` vuota, copia esterna vuota e indicata, prima configurazione in due passaggi, primo backup.
+3. **Se l'installazione di PostgreSQL fallisce ancora**: servono `installazione.log`, `postgresql-installer-debug.log` e la cartella `logs\` in `C:\Program Files\PrivacyStudio\` (oppure `install-postgresql.log` e `bitrock_installer*.log` in `%TEMP%`). Finora la causa è stata solo ipotizzata.
+4. Chiedere al titolare cosa non tornava nel comportamento originale della copia esterna («consigliata ma in realtà obbligatoria», poi «DEVE essere facoltativa»): il testo dell'errore non bloccante visto in installazione non è stato mai registrato.
+5. Eventuale **file `.wsb`** per la Windows Sandbox (`C:\privacy` in sola lettura + cartella dedicata scrivibile per la copia esterna), da far leggere prima di aprirlo.
+6. Layout di VS Code con la colonna destra divisa in tre: sistemarlo a mano (View: Reset View Locations, Editor Layout Single). Non automatizzabile.
+7. Cancellare a mano la cartella di prova `C:\privacy_prova` (creata da me, contiene solo `t.bat`).
 
 ## Da fare (in ordine di priorità)
 
-1. **Prova dell'installatore su Windows pulito** (macchina virtuale): è il blocco principale. Finora verificato solo con `/DRYRUN=1`. Seguire la lista di prova; verificare anche PostgreSQL e `pg_restore` veri (T24/T25 finora provati solo in Docker).
+1. **Prova dell'installatore su Windows pulito** (Sandbox o macchina virtuale con checkpoint): è il blocco principale. Finora verificato solo con `/DRYRUN=1`. Seguire la lista di prova; verificare anche PostgreSQL e `pg_restore` veri (T24/T25 finora provati solo in Docker).
 2. **Rapporto dei test T01–T27 con evidenze**: non esiste ancora un rapporto consolidato. Da eseguire la suite e registrare l'esito (in questa sessione non l'ho ancora lanciata: `dotnet` non è nel PATH di WSL).
 3. **Procedura di aggiornamento dello schema** (migrazioni per versioni successive alla 0.9.0).
 4. **Firma digitale del codice** e dell'installatore.
