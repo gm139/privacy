@@ -24,8 +24,8 @@ Versione applicativa: 0.9.0 · Branch `main` · 45 commit, albero pulito all'ult
 ## Sessione del 6 novembre (dopo la prova su Windows pulito)
 
 - Copia esterna: **FACOLTATIVA** (decisione del titolare, 6/11). Campo vuoto = nessuna copia esterna, senza domande né blocchi; se indicata, si controlla che l'unità esista (avviso se è il disco di Windows). Una versione intermedia l'aveva resa obbligatoria: annullata. Il manuale (facoltativa) è quindi corretto.
-- PostgreSQL con chiave di registro ma cartella vuota o senza `bin\psql.exe` = **non installato** (viene reinstallato).
-- `tools/Pulisci-PC-di-prova.bat` (copiato in `C:\privacy`): disinstalla tutto e cancella cartelle, utente `postgres`, registro.
+- PostgreSQL: con la chiave di registro ma senza `bin\psql.exe` = non installato. Se la cartella `Program Files\PostgreSQL\17` esiste ma non contiene file, l'installatore la elimina da sé (e toglie la chiave di registro orfana) prima di installare; con file presenti si ferma e spiega. (Prima versione non bastava: abortiva.)
+- `tools/Pulisci-PC-di-prova.bat` (copiato in `C:\privacy`): disinstalla tutto e cancella cartelle, utente `postgres`, registro. Rivisto: attende il disinstallatore di PostgreSQL (si rilancia da %TEMP%), riprova la cancellazione, mostra gli errori. La sola routine di cancellazione è stata provata su cartelle di prova, il resto no.
 - Installatore ricompilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync) e copiato in `C:\privacy`. **Non provato.**
 
 ## Da fare (in ordine di priorità)

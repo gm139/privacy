@@ -306,6 +306,30 @@ begin
     end;
 end;
 
+{ vero se sotto Dir c'è almeno un FILE (le cartelle vuote, anche annidate, non contano) }
+function TreeHasFiles(const Dir: String): Boolean;
+var
+  FR: TFindRec;
+begin
+  Result := False;
+  if not DirExists(Dir) then exit;
+  if FindFirst(Dir + '\*', FR) then
+  try
+    repeat
+      if (FR.Name <> '.') and (FR.Name <> '..') then
+      begin
+        if (FR.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+        begin
+          if TreeHasFiles(Dir + '\' + FR.Name) then Result := True;
+        end
+        else Result := True;
+      end;
+    until Result or not FindNext(FR);
+  finally
+    FindClose(FR);
+  end;
+end;
+
 { copia nella cartella del programma i registri dell'installatore di PostgreSQL (di solito in %TEMP%) }
 procedure CollectPgLogs;
 var
@@ -410,7 +434,21 @@ begin
                'poi eliminare la cartella ' + ExpandConstant('{autopf}') + '\PostgreSQL (se esiste) e rieseguire questo programma di installazione.', mbError, MB_OK);
         Failed := True; exit;
       end;
-      if DirNotEmpty(ExpandConstant('{autopf}\PostgreSQL\17')) then
+      { cartella di PostgreSQL presente ma senza file (residuo di una disinstallazione): si elimina, l'installatore di PostgreSQL non la gradisce }
+      if DirExists(ExpandConstant('{autopf}\PostgreSQL\17')) and not TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL\17')) then
+      begin
+        Note('Cartella PostgreSQL 17 vuota: eliminata.');
+        DelTree(ExpandConstant('{autopf}\PostgreSQL\17'), True, True, True);
+        if DirExists(ExpandConstant('{autopf}\PostgreSQL')) and not TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL')) then
+          DelTree(ExpandConstant('{autopf}\PostgreSQL'), True, True, True);
+      end;
+      { chiave di registro rimasta senza programmi: va tolta, altrimenti l'installatore di PostgreSQL la scambia per un'installazione esistente }
+      if RegKeyExists(HKLM64, '{#PgRegKey}') then
+      begin
+        Note('Chiave di registro di PostgreSQL senza programmi: eliminata.');
+        RegDeleteKeyIncludingSubkeys(HKLM64, '{#PgRegKey}');
+      end;
+      if TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL\17')) then
       begin
         Note('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' esiste già e non è vuota.');
         MsgBox('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' esiste già e non è vuota, ma PostgreSQL 17 non risulta installato. ' +

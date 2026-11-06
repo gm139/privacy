@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 chcp 65001 >nul
 title Privacy Studio - riporta il PC allo stato pulito
 rem ============================================================================
@@ -55,7 +55,10 @@ taskkill /f /im postgres.exe >nul 2>&1
 echo [4/8] Disinstallazione di PostgreSQL 17...
 if exist "%ProgramFiles%\PostgreSQL\17\uninstall-postgresql.exe" (
   "%ProgramFiles%\PostgreSQL\17\uninstall-postgresql.exe" --mode unattended --unattendedmodeui none
-  timeout /t 5 /nobreak >nul
+  rem il disinstallatore si copia in una cartella temporanea e termina subito: si attende il processo vero
+  timeout /t 3 /nobreak >nul
+  call :attendi_pg
+  timeout /t 3 /nobreak >nul
 ) else echo      (disinstallatore non trovato)
 sc query postgresql-x64-17 >nul 2>&1 && sc delete postgresql-x64-17 >nul 2>&1
 
@@ -93,11 +96,33 @@ if "%RESIDUI%"=="0" (echo PC pulito. Si puo' reinstallare. ) else (echo Restano 
 pause
 exit /b 0
 
+:attendi_pg
+set /a N=0
+:attesa
+tasklist /fi "imagename eq uninstall-postgresql.exe" 2>nul | find /i "uninstall-postgresql" >nul
+if errorlevel 1 exit /b 0
+set /a N+=1
+if !N! geq 120 exit /b 0
+timeout /t 2 /nobreak >nul
+goto attesa
+
 :del
-if exist "%~1" (
-  echo      cancello %~1
-  takeown /f "%~1" /r /d s >nul 2>&1
-  icacls "%~1" /grant *S-1-5-32-544:F /t /c >nul 2>&1
-  rd /s /q "%~1" >nul 2>&1
-)
+rem cancella una cartella: toglie gli attributi, prende possesso, riprova piu' volte e mostra l'esito
+if not exist "%~1" exit /b 0
+echo      cancello %~1
+attrib -r -s -h "%~1\*" /s /d >nul 2>&1
+takeown /f "%~1" /r /d s >nul 2>&1
+icacls "%~1" /grant *S-1-5-32-544:F /t /c /q >nul 2>&1
+set /a T=0
+:riprova
+rd /s /q "%~1" 2>nul
+if not exist "%~1" exit /b 0
+set /a T+=1
+if !T! lss 6 ( timeout /t 3 /nobreak >nul & goto riprova )
+rem ultimo tentativo: svuotare con robocopy (regge anche percorsi lunghi) e poi rimuovere
+mkdir "%TEMP%\vuota_privacy" >nul 2>&1
+robocopy "%TEMP%\vuota_privacy" "%~1" /mir /r:1 /w:1 /njh /njs /nfl /ndl >nul 2>&1
+rd /s /q "%~1" 2>nul
+rd "%TEMP%\vuota_privacy" >nul 2>&1
+if exist "%~1" echo      ATTENZIONE: non riesco a cancellare %~1 (e' in uso? chiudere Esplora file e finestre aperte su quella cartella)
 exit /b 0
