@@ -122,6 +122,22 @@ begin
   Result := Trim(ExtEdit.Text);
 end;
 
+{ cartelle che non devono mai essere usate per i backup: radici di disco, cartelle di sistema e personali }
+function UnsafeBackupDir(const Dir: String): Boolean;
+var
+  D: String;
+begin
+  D := RemoveBackslash(Trim(Dir));
+  Result := (Length(D) < 4)
+    or (CompareText(D, RemoveBackslash(ExpandConstant('{sd}'))) = 0)
+    or (CompareText(D, RemoveBackslash(ExpandConstant('{win}'))) = 0)
+    or (CompareText(D, RemoveBackslash(ExpandConstant('{autopf}'))) = 0)
+    or (CompareText(D, RemoveBackslash(ExpandConstant('{userdocs}'))) = 0)
+    or (CompareText(D, RemoveBackslash(ExpandConstant('{userdesktop}'))) = 0)
+    or (CompareText(D, RemoveBackslash(ExpandConstant('{%USERPROFILE}'))) = 0)
+    or (CompareText(D, RemoveBackslash(ExpandConstant('{sd}\Users'))) = 0);
+end;
+
 procedure BrowseInto(Edit: TNewEdit);
 var
   D: String;
@@ -270,6 +286,16 @@ begin
       MsgBox('Indicare la cartella dei backup sul computer.', mbError, MB_OK);
       Result := False;
     end
+    else if UnsafeBackupDir(LocalDir) then
+    begin
+      MsgBox('La cartella dei backup non può essere la radice di un disco, una cartella di Windows, dei programmi o personale (Documenti, Desktop, profilo). Indicare una cartella dedicata, per esempio «Backup Privacy Studio».', mbError, MB_OK);
+      Result := False;
+    end
+    else if (ExtDir <> '') and UnsafeBackupDir(ExtDir) then
+    begin
+      MsgBox('La copia esterna non può essere la radice di un disco (per esempio D:\) né una cartella di Windows, dei programmi o personale. Indicare una cartella dedicata sul disco esterno, per esempio D:\Backup Privacy Studio.', mbError, MB_OK);
+      Result := False;
+    end
     else if ExtDir = '' then
       Result := True
     else if (Length(ExtDir) >= 2) and (ExtDir[2] = ':') and not DirExists(Copy(ExtDir, 1, 3)) then
@@ -328,6 +354,25 @@ begin
   finally
     FindClose(FR);
   end;
+end;
+
+{ elimina una cartella SENZA file; se i permessi lo impediscono (residuo dell'utente «postgres» cancellato) prende possesso e riprova.
+  Prima di toccare i permessi controlla che la cartella sia davvero quella di PostgreSQL. Restituisce vero se la cartella non c'è più. }
+function RemoveEmptyPgDir(const Dir: String): Boolean;
+var
+  Code: Integer;
+begin
+  Result := not DirExists(Dir);
+  if Result then exit;
+  if TreeHasFiles(Dir) then exit;
+  if (Pos('\PostgreSQL', Dir) = 0) or (Length(Dir) < 20) then exit;
+  DelTree(Dir, True, True, True);
+  if not DirExists(Dir) then begin Result := True; exit; end;
+  Note('Cartella ' + Dir + ' non eliminabile: prendo possesso e correggo i permessi.');
+  Exec(ExpandConstant('{cmd}'), '/S /C "takeown /f "' + Dir + '" /a /r /d y >nul 2>&1 <nul"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Exec(ExpandConstant('{cmd}'), '/S /C "icacls "' + Dir + '" /grant *S-1-5-32-544:F /t /c /q >nul 2>&1 <nul"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  DelTree(Dir, True, True, True);
+  Result := not DirExists(Dir);
 end;
 
 { copia nella cartella del programma i registri dell'installatore di PostgreSQL (di solito in %TEMP%) }
@@ -434,13 +479,20 @@ begin
                'poi eliminare la cartella ' + ExpandConstant('{autopf}') + '\PostgreSQL (se esiste) e rieseguire questo programma di installazione.', mbError, MB_OK);
         Failed := True; exit;
       end;
-      { cartella di PostgreSQL presente ma senza file (residuo di una disinstallazione): si elimina, l'installatore di PostgreSQL non la gradisce }
+      { cartella di PostgreSQL presente ma senza file (residuo di una disinstallazione): va tolta, altrimenti l'installatore di PostgreSQL fallisce }
       if DirExists(ExpandConstant('{autopf}\PostgreSQL\17')) and not TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL\17')) then
       begin
-        Note('Cartella PostgreSQL 17 vuota: eliminata.');
-        DelTree(ExpandConstant('{autopf}\PostgreSQL\17'), True, True, True);
+        if RemoveEmptyPgDir(ExpandConstant('{autopf}\PostgreSQL\17')) then
+          Note('Cartella PostgreSQL 17 vuota: eliminata.')
+        else
+        begin
+          Note('Cartella PostgreSQL 17 vuota ma non eliminabile.');
+          MsgBox('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' è vuota ma non riesco a eliminarla (è aperta in Esplora file o in un altro programma?). ' +
+                 'Chiuderla, poi riavviare il computer e rieseguire questo programma di installazione.', mbError, MB_OK);
+          Failed := True; exit;
+        end;
         if DirExists(ExpandConstant('{autopf}\PostgreSQL')) and not TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL')) then
-          DelTree(ExpandConstant('{autopf}\PostgreSQL'), True, True, True);
+          RemoveEmptyPgDir(ExpandConstant('{autopf}\PostgreSQL'));
       end;
       { chiave di registro rimasta senza programmi: va tolta, altrimenti l'installatore di PostgreSQL la scambia per un'installazione esistente }
       if RegKeyExists(HKLM64, '{#PgRegKey}') then
