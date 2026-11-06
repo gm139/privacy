@@ -107,22 +107,24 @@ timeout /t 2 /nobreak >nul
 goto attesa
 
 :del
-rem cancella una cartella: toglie gli attributi, prende possesso, riprova piu' volte e mostra l'esito
+rem cancella una cartella. Prima il modo semplice; i permessi si toccano solo se serve. Nessun comando puo' restare in attesa della tastiera (<nul).
 if not exist "%~1" exit /b 0
 echo      cancello %~1
-attrib -r -s -h "%~1\*" /s /d >nul 2>&1
-takeown /f "%~1" /r /d s >nul 2>&1
-icacls "%~1" /grant *S-1-5-32-544:F /t /c /q >nul 2>&1
+rd /s /q "%~1" 2>nul <nul
+if not exist "%~1" ( echo        fatto & exit /b 0 )
+echo        in uso o protetta: cambio i permessi, puo' richiedere un minuto...
+takeown /f "%~1" /a <nul >nul 2>&1
+icacls "%~1" /grant *S-1-5-32-544:F /t /c /q <nul >nul 2>&1
 set /a T=0
 :riprova
-rd /s /q "%~1" 2>nul
-if not exist "%~1" exit /b 0
+rd /s /q "%~1" 2>nul <nul
+if not exist "%~1" ( echo        fatto & exit /b 0 )
 set /a T+=1
-if !T! lss 6 ( timeout /t 3 /nobreak >nul & goto riprova )
-rem ultimo tentativo: svuotare con robocopy (regge anche percorsi lunghi) e poi rimuovere
+if !T! lss 5 ( echo        nuovo tentativo !T! di 5 & timeout /t 3 /nobreak >nul & goto riprova )
+echo        ultimo tentativo con robocopy...
 mkdir "%TEMP%\vuota_privacy" >nul 2>&1
-robocopy "%TEMP%\vuota_privacy" "%~1" /mir /r:1 /w:1 /njh /njs /nfl /ndl >nul 2>&1
-rd /s /q "%~1" 2>nul
+robocopy "%TEMP%\vuota_privacy" "%~1" /mir /r:1 /w:1 /njh /njs /nfl /ndl <nul >nul 2>&1
+rd /s /q "%~1" 2>nul <nul
 rd "%TEMP%\vuota_privacy" >nul 2>&1
-if exist "%~1" echo      ATTENZIONE: non riesco a cancellare %~1 (e' in uso? chiudere Esplora file e finestre aperte su quella cartella)
+if exist "%~1" (echo      ATTENZIONE: non riesco a cancellare %~1 - e' in uso? chiudere Esplora file e le finestre aperte su quella cartella, poi riavviare il PC e rilanciare) else echo        fatto
 exit /b 0
