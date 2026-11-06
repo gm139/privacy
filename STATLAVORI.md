@@ -21,6 +21,14 @@ Versione applicativa: 0.9.0 · Branch `main` · 45 commit, albero pulito all'ult
 - **Manuale PDF** (60 pagine, capitolo 0 sugli adempimenti GDPR) e **lista di prova dell'installazione** (PDF), generati da `docs/manuale/`.
 - **Installer Inno Setup** (`installer/PrivacyStudio.iss`) con diagnostica dell'installazione di PostgreSQL, password con «occhio», copia esterna facoltativa.
 
+## Sessione del 6 novembre (dopo la prova su Windows pulito)
+
+- Copia esterna **obbligatoria**: installatore (niente più casella «Non indicare», niente `/NOEXTERNAL`, rifiutato il disco di Windows) e pulsante «Esegui backup ora» (rifiuta se manca `externalBackupDir`). `BackupService` invariato (i test usano ancora `null`).
+- PostgreSQL con chiave di registro ma cartella vuota o senza `bin\psql.exe` = **non installato** (viene reinstallato).
+- `tools/Pulisci-PC-di-prova.bat` (copiato in `C:\privacy`): disinstalla tutto e cancella cartelle, utente `postgres`, registro.
+- Installatore ricompilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync) e copiato in `C:\privacy`. **Non provato.**
+- **Manuale e lista di prova NON aggiornati**: dicono ancora che la copia esterna è facoltativa (`part_b.py` riga 15 e 54, `prova.py` B4). Da correggere e rigenerare i PDF.
+
 ## Da fare (in ordine di priorità)
 
 1. **Prova dell'installatore su Windows pulito** (macchina virtuale): è il blocco principale. Finora verificato solo con `/DRYRUN=1`. Seguire la lista di prova; verificare anche PostgreSQL e `pg_restore` veri (T24/T25 finora provati solo in Docker).
