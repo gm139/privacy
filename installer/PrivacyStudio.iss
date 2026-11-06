@@ -64,7 +64,6 @@ var
   BkPage: TWizardPage;
   BkEdit, ExtEdit: TNewEdit;
   BkBrowse, ExtBrowse: TNewButton;
-  ExtCheck: TNewCheckBox;
   ShowPwd: TNewCheckBox;
   PgBase: String;
   PgExists: Boolean;
@@ -120,7 +119,7 @@ end;
 
 function ExtDir: String;
 begin
-  if ExtCheck.Checked then Result := '' else Result := Trim(ExtEdit.Text);
+  Result := Trim(ExtEdit.Text);
 end;
 
 procedure BrowseInto(Edit: TNewEdit);
@@ -139,12 +138,6 @@ end;
 procedure BrowseExtClick(Sender: TObject);
 begin
   BrowseInto(ExtEdit);
-end;
-
-procedure ExtCheckClick(Sender: TObject);
-begin
-  ExtEdit.Enabled := not ExtCheck.Checked;
-  ExtBrowse.Enabled := not ExtCheck.Checked;
 end;
 
 function PwdCount: Integer;
@@ -186,6 +179,11 @@ begin
   if PgExists then
   begin
     RegQueryStringValue(HKLM64, '{#PgRegKey}', 'Base Directory', PgBase);
+    { chiave di registro rimasta ma cartella vuota o senza programmi (disinstallazione incompleta): PostgreSQL NON è installato }
+    if not FileExists(PgBase + '\bin\psql.exe') then PgExists := False;
+  end;
+  if PgExists then
+  begin
     PgPage := CreateInputQueryPage(wpSelectDir, 'Database', 'PostgreSQL è già installato',
       'Inserire la password dell''utente amministratore (postgres) del PostgreSQL 17 già presente. Serve solo all''installazione per creare il database dello studio e non viene salvata.');
     PgPage.Add('Password dell''utente postgres:', True);
@@ -209,7 +207,7 @@ begin
   ShowPwd.Height := ScaleY(20);
   ShowPwd.OnClick := @ShowPwdClick;
 
-  { pagina dei backup: la copia esterna è consigliata ma si può rimandare }
+  { pagina dei backup: la copia esterna è OBBLIGATORIA }
   BkPage := CreateCustomPage(PgPage.ID, 'Copie di sicurezza', 'Dove salvare i backup');
   W := BkPage.SurfaceWidth;
   BtnW := ScaleX(90);
@@ -223,7 +221,7 @@ begin
   BkBrowse.Caption := 'Sfoglia...'; BkBrowse.Left := W - BtnW; BkBrowse.Top := ScaleY(16); BkBrowse.Width := BtnW; BkBrowse.Height := ScaleY(24);
   BkBrowse.OnClick := @BrowseLocalClick;
 
-  MakeLabel(BkPage, 'Copia esterna (consigliata): un supporto DIVERSO dal computer, come un disco esterno o un''altra macchina. Senza, il backup non protegge da guasto, furto o incendio.', ScaleY(62));
+  MakeLabel(BkPage, 'Copia esterna (obbligatoria): un supporto DIVERSO dal computer, come un disco esterno o un''altra macchina. Senza, il backup non protegge da guasto, furto o incendio e il programma non esegue backup.', ScaleY(62));
   ExtEdit := TNewEdit.Create(BkPage);
   ExtEdit.Parent := BkPage.Surface;
   ExtEdit.Left := 0; ExtEdit.Top := ScaleY(100); ExtEdit.Width := W - BtnW - ScaleX(8);
@@ -232,15 +230,8 @@ begin
   ExtBrowse.Parent := BkPage.Surface;
   ExtBrowse.Caption := 'Sfoglia...'; ExtBrowse.Left := W - BtnW; ExtBrowse.Top := ScaleY(98); ExtBrowse.Width := BtnW; ExtBrowse.Height := ScaleY(24);
   ExtBrowse.OnClick := @BrowseExtClick;
-  ExtCheck := TNewCheckBox.Create(BkPage);
-  ExtCheck.Parent := BkPage.Surface;
-  ExtCheck.Caption := 'Non indicare ora la copia esterna (si può aggiungere più tardi in config.json)';
-  ExtCheck.Left := 0; ExtCheck.Top := ScaleY(134); ExtCheck.Width := W; ExtCheck.Height := ScaleY(20);
-  ExtCheck.Checked := ExpandConstant('{param:NOEXTERNAL|0}') = '1';
-  ExtCheck.OnClick := @ExtCheckClick;
-  ExtCheckClick(nil);
 
-  { installazioni non interattive (assistenza tecnica): /PGPASSWORD=... /EXTERNALDIR=... /NOEXTERNAL=1 }
+  { installazioni non interattive (assistenza tecnica): /PGPASSWORD=... /EXTERNALDIR=... }
   PgPage.Values[0] := ExpandConstant('{param:PGPASSWORD|}');
   if not PgExists then PgPage.Values[1] := PgPage.Values[0];
 end;
@@ -279,20 +270,21 @@ begin
       MsgBox('Indicare la cartella dei backup sul computer.', mbError, MB_OK);
       Result := False;
     end
-    else if (not ExtCheck.Checked) and (Trim(ExtEdit.Text) = '') then
+    else if ExtDir = '' then
     begin
-      MsgBox('Indicare la copia esterna, oppure spuntare «Non indicare ora la copia esterna».', mbError, MB_OK);
+      MsgBox('La copia esterna è obbligatoria: indicare una cartella su un supporto diverso dal computer (disco esterno, altra unità o altra macchina).', mbError, MB_OK);
       Result := False;
     end
-    else if ExtCheck.Checked then
-      Result := MsgBox('Senza una copia esterna i backup restano sullo stesso computer e non proteggono da guasto, furto o incendio. Si può aggiungerla più tardi in config.json. Continuare senza?', mbConfirmation, MB_YESNO) = IDYES
     else if (Length(ExtDir) >= 2) and (ExtDir[2] = ':') and not DirExists(Copy(ExtDir, 1, 3)) then
     begin
       MsgBox('L''unità indicata per la copia esterna non esiste o non è collegata.', mbError, MB_OK);
       Result := False;
     end
     else if CompareText(Copy(ExtDir, 1, 3), Copy(ExpandConstant('{sys}'), 1, 3)) = 0 then
-      Result := MsgBox('La copia esterna è sullo stesso disco di Windows. Continuare comunque?', mbConfirmation, MB_YESNO) = IDYES;
+    begin
+      MsgBox('La copia esterna non può stare sul disco di Windows: non proteggerebbe da guasto, furto o incendio. Scegliere un altro disco, un disco esterno o una cartella di rete.', mbError, MB_OK);
+      Result := False;
+    end;
   end;
 end;
 
@@ -491,11 +483,11 @@ begin
     SaveStringToFile(ConnFile, Cs, False);
     Conf := '{ "ledgerPath": "' + JsonEsc(LocalDir + '\disposals.jsonl') + '",' + #13#10 +
             '  "backupDir": "' + JsonEsc(LocalDir) + '",' + #13#10;
-    if ExtDir <> '' then Conf := Conf + '  "externalBackupDir": "' + JsonEsc(ExtDir) + '",' + #13#10;
+    Conf := Conf + '  "externalBackupDir": "' + JsonEsc(ExtDir) + '",' + #13#10;
     Conf := Conf + '  "pgBinDir": "' + JsonEsc(PgBase + '\bin') + '" }';
     SaveStringToFile(ConfFile, Conf, False);
     ForceDirectories(LocalDir);
-    if ExtDir <> '' then ForceDirectories(ExtDir);
+    ForceDirectories(ExtDir);
     { password del ruolo di installazione (serve per gli aggiornamenti dello schema): file riservato agli amministratori }
     SecretDir := ExpandConstant('{commonappdata}\PrivacyStudio');
     ForceDirectories(SecretDir);
