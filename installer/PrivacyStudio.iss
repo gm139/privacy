@@ -207,7 +207,7 @@ begin
   ShowPwd.Height := ScaleY(20);
   ShowPwd.OnClick := @ShowPwdClick;
 
-  { pagina dei backup: la copia esterna è OBBLIGATORIA }
+  { pagina dei backup: la copia esterna è facoltativa }
   BkPage := CreateCustomPage(PgPage.ID, 'Copie di sicurezza', 'Dove salvare i backup');
   W := BkPage.SurfaceWidth;
   BtnW := ScaleX(90);
@@ -221,7 +221,7 @@ begin
   BkBrowse.Caption := 'Sfoglia...'; BkBrowse.Left := W - BtnW; BkBrowse.Top := ScaleY(16); BkBrowse.Width := BtnW; BkBrowse.Height := ScaleY(24);
   BkBrowse.OnClick := @BrowseLocalClick;
 
-  MakeLabel(BkPage, 'Copia esterna (obbligatoria): un supporto DIVERSO dal computer, come un disco esterno o un''altra macchina. Senza, il backup non protegge da guasto, furto o incendio e il programma non esegue backup.', ScaleY(62));
+  MakeLabel(BkPage, 'Copia esterna (facoltativa, ma consigliata): un supporto DIVERSO dal computer, come un disco esterno o un''altra macchina. Lasciare vuoto per non usarla; senza, il backup non protegge da guasto, furto o incendio. Si può aggiungere più tardi in config.json.', ScaleY(62));
   ExtEdit := TNewEdit.Create(BkPage);
   ExtEdit.Parent := BkPage.Surface;
   ExtEdit.Left := 0; ExtEdit.Top := ScaleY(100); ExtEdit.Width := W - BtnW - ScaleX(8);
@@ -271,20 +271,14 @@ begin
       Result := False;
     end
     else if ExtDir = '' then
-    begin
-      MsgBox('La copia esterna è obbligatoria: indicare una cartella su un supporto diverso dal computer (disco esterno, altra unità o altra macchina).', mbError, MB_OK);
-      Result := False;
-    end
+      Result := True
     else if (Length(ExtDir) >= 2) and (ExtDir[2] = ':') and not DirExists(Copy(ExtDir, 1, 3)) then
     begin
       MsgBox('L''unità indicata per la copia esterna non esiste o non è collegata.', mbError, MB_OK);
       Result := False;
     end
     else if CompareText(Copy(ExtDir, 1, 3), Copy(ExpandConstant('{sys}'), 1, 3)) = 0 then
-    begin
-      MsgBox('La copia esterna non può stare sul disco di Windows: non proteggerebbe da guasto, furto o incendio. Scegliere un altro disco, un disco esterno o una cartella di rete.', mbError, MB_OK);
-      Result := False;
-    end;
+      Result := MsgBox('La copia esterna è sullo stesso disco di Windows e non protegge da guasto, furto o incendio. Continuare comunque?', mbConfirmation, MB_YESNO) = IDYES;
   end;
 end;
 
@@ -483,11 +477,11 @@ begin
     SaveStringToFile(ConnFile, Cs, False);
     Conf := '{ "ledgerPath": "' + JsonEsc(LocalDir + '\disposals.jsonl') + '",' + #13#10 +
             '  "backupDir": "' + JsonEsc(LocalDir) + '",' + #13#10;
-    Conf := Conf + '  "externalBackupDir": "' + JsonEsc(ExtDir) + '",' + #13#10;
+    if ExtDir <> '' then Conf := Conf + '  "externalBackupDir": "' + JsonEsc(ExtDir) + '",' + #13#10;
     Conf := Conf + '  "pgBinDir": "' + JsonEsc(PgBase + '\bin') + '" }';
     SaveStringToFile(ConfFile, Conf, False);
     ForceDirectories(LocalDir);
-    ForceDirectories(ExtDir);
+    if ExtDir <> '' then ForceDirectories(ExtDir);
     { password del ruolo di installazione (serve per gli aggiornamenti dello schema): file riservato agli amministratori }
     SecretDir := ExpandConstant('{commonappdata}\PrivacyStudio');
     ForceDirectories(SecretDir);

@@ -179,11 +179,6 @@ public partial class MainWindow : Window
 
     private async void OnBackupNow(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(_services.Config.ExternalBackupDir))
-        {
-            MessageBox.Show(this, "La copia esterna è obbligatoria e non è configurata. Aggiungere \"externalBackupDir\" (un disco esterno o un'altra macchina) in config.json, nella cartella %LOCALAPPDATA%\\PrivacyStudio, poi riavviare il programma.", "Backup", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
         BackupNowButton.IsEnabled = false; StatusText.Text = "Backup in corso…";
         try
         {

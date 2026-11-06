@@ -23,11 +23,10 @@ Versione applicativa: 0.9.0 · Branch `main` · 45 commit, albero pulito all'ult
 
 ## Sessione del 6 novembre (dopo la prova su Windows pulito)
 
-- Copia esterna **obbligatoria**: installatore (niente più casella «Non indicare», niente `/NOEXTERNAL`, rifiutato il disco di Windows) e pulsante «Esegui backup ora» (rifiuta se manca `externalBackupDir`). `BackupService` invariato (i test usano ancora `null`).
+- Copia esterna: **FACOLTATIVA** (decisione del titolare, 6/11). Campo vuoto = nessuna copia esterna, senza domande né blocchi; se indicata, si controlla che l'unità esista (avviso se è il disco di Windows). Una versione intermedia l'aveva resa obbligatoria: annullata. Il manuale (facoltativa) è quindi corretto.
 - PostgreSQL con chiave di registro ma cartella vuota o senza `bin\psql.exe` = **non installato** (viene reinstallato).
 - `tools/Pulisci-PC-di-prova.bat` (copiato in `C:\privacy`): disinstalla tutto e cancella cartelle, utente `postgres`, registro.
 - Installatore ricompilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync) e copiato in `C:\privacy`. **Non provato.**
-- **Manuale e lista di prova NON aggiornati**: dicono ancora che la copia esterna è facoltativa (`part_b.py` riga 15 e 54, `prova.py` B4). Da correggere e rigenerare i PDF.
 
 ## Da fare (in ordine di priorità)
 
