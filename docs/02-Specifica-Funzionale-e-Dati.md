@@ -46,12 +46,12 @@ Poiché l'installazione è singola, **`practice_id` compare solo su `practices`,
 
 ## 4. Modello dati v1
 
-**DDL eseguibile:** `/home/mauri/progetti/Privacy/db/` — `000_bootstrap_roles.sql`, `001_schema_v1.sql` (46 tabelle e 48 cataloghi), `002_catalogs.sql` (contenuto dei cataloghi), `003_rules_and_grants.sql` (invarianti, funzioni, privilegi), `tests/test_v1.sql` e `run_tests.sh`. Verificato su PostgreSQL 17: 132 controlli superati. Le sezioni seguenti restano la descrizione logica; dove il DDL differisce o aggiunge, vale il DDL. Differenze e aggiunte principali:
+**DDL eseguibile:** `/home/mauri/progetti/Privacy/db/` — `000_bootstrap_roles.sql`, `001_schema_v1.sql` (46 tabelle e 48 cataloghi), `002_catalogs.sql` (contenuto dei cataloghi), `003_rules_and_grants.sql` (invarianti, funzioni, privilegi), `004_disposal_ledger.sql` (eliminazione fisica e registro esterno), `005_hardening.sql` (correzioni applicabili anche a un database già in uso), `tests/test_v1.sql` e `run_tests.sh`. Verificato su PostgreSQL 17: 137 controlli superati. Le sezioni seguenti restano la descrizione logica; dove il DDL differisce o aggiunge, vale il DDL. Differenze e aggiunte principali:
 
 - `processed_commands` (idempotenza dei comandi), `local_holidays` (festività locali per le scadenze), catalogo `cat_template_variable` (variabili ammesse nei modelli, formato `{{codice}}`).
 - `disposal_records.reason` e `policy_version_id` facoltativo (la rimozione di un interessato non discende da una politica); `incident_actions.protocol_reference` obbligatorio per le notifiche; `notice_deliveries.delivery_code` generato dal database.
 - Funzioni: `compute_due_date`, `remove_subject` (F07), `dispose_file`, `verify_audit_chain`. Ruoli: `privacy_migrator` (proprietario, DDL) e `privacy_app` (operativo, nessun DDL, nessun UPDATE/DELETE su audit, eventi, consegne e file).
-- Le invarianti sono nel database: versioni pubblicate immutabili, nascita sempre in bozza, validazione alla pubblicazione, consegne solo di versioni pubblicate con poteri di rappresentanza verificati e validi alla data, termini delle richieste modificabili solo con una proroga, chiusura solo con riscontro, audit append-only con catena di hash.
+- Le invarianti sono nel database: versioni pubblicate immutabili, nascita sempre in bozza, validazione alla pubblicazione, consegne solo di versioni pubblicate con poteri di rappresentanza verificati e validi alla data, termini delle richieste modificabili solo con una proroga, chiusura solo con riscontro, incidenti chiudibili solo dopo la valutazione e immutabili una volta chiusi, audit append-only con catena di hash.
 - Il ruolo proprietario (`privacy_migrator`) e i superuser possono aggirare le restrizioni applicative per manutenzione: è un limite dichiarato (§2).
 
 

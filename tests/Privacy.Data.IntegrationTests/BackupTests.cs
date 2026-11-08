@@ -36,7 +36,7 @@ public class BackupRestoreTests
     private const string Container = "privacy-test";
 
     private static PgProcessTools Tools(string dbToDump = "privacy", string restoreInto = "privacy_restore") => new(
-        "docker", new[] { "exec", "-i", Container }, new[] { "-U", "postgres", "-Fc", dbToDump }, new[] { "-U", "postgres", "-d", restoreInto });
+        "docker", new[] { "exec", "-i", Container }, new[] { "-U", "privacy_app", "-Fc", dbToDump }, new[] { "-U", "postgres", "-d", restoreInto });
 
     private static string RepoFile(string relative)
     {
@@ -48,6 +48,8 @@ public class BackupRestoreTests
     private static string Docker(string stdin, params string[] args)
     {
         var psi = new ProcessStartInfo("docker") { RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true };
+        // senza questa riga lo stdin viene codificato con la code page della console (0x85) e pg_restore rifiuta l'UTF-8
+        psi.StandardInputEncoding = new System.Text.UTF8Encoding(false);
         foreach (var a in args) psi.ArgumentList.Add(a);
         using var p = Process.Start(psi)!;
         p.StandardInput.Write(stdin); p.StandardInput.Close();

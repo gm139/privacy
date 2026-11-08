@@ -81,6 +81,55 @@ begin
   Result := not PgExists;
 end;
 
+{ solo il nome utente, senza dominio o nome del computer }
+function ShortUser(const S: String): String;
+var
+  i: Integer;
+begin
+  Result := S;
+  for i := Length(Result) downto 1 do
+    if Result[i] = '\' then
+    begin
+      Result := Copy(Result, i + 1, Length(Result));
+      exit;
+    end;
+end;
+
+{ L'installazione scrive connection.txt riservato all'utente che la esegue: se non è lo stesso utente connesso
+  al computer (installazione remota o come amministratore diverso), il titolare non potrebbe leggere la
+  configurazione e il programma non partirebbe. Meglio fermarsi prima di creare il database. }
+function InitializeSetup: Boolean;
+var
+  Tmp, InteractiveUser, Cmd: String;
+  Buf: AnsiString;
+  Code: Integer;
+begin
+  Result := False;
+  if DryRun then begin Result := True; exit; end;
+  Tmp := ExpandConstant('{tmp}\interactive-user.txt');
+  DeleteFile(Tmp);
+  Cmd := '-NoProfile -ExecutionPolicy Bypass -Command "(Get-CimInstance Win32_ComputerSystem).UserName | Set-Content -NoNewline -Encoding ascii ''' + Tmp + '''"';
+  InteractiveUser := '';
+  if Exec('powershell.exe', Cmd, '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0) then
+    if LoadStringFromFile(Tmp, Buf) then InteractiveUser := Trim(String(Buf));
+  DeleteFile(Tmp);
+  if InteractiveUser = '' then
+  begin
+    MsgBox('Nessun utente è connesso al computer. L''installazione va eseguita da un utente con una sessione attiva: ' +
+           'i file di configurazione sono riservati all''utente che installa.', mbError, MB_OK);
+    exit;
+  end;
+  if CompareText(ShortUser(InteractiveUser), ShortUser(GetUserNameString)) <> 0 then
+  begin
+    MsgBox('L''installazione è in esecuzione come «' + GetUserNameString + '» ma al computer è connesso «' + InteractiveUser + '». ' +
+           'I file di configurazione sarebbero leggibili solo da chi esegue l''installazione. ' +
+           'Uscire, accedere come l''utente che userà il programma e ripetere l''installazione (l''elevazione amministrativa deve restare sullo stesso utente).',
+           mbError, MB_OK);
+    exit;
+  end;
+  Result := True;
+end;
+
 procedure Note(const S: String);
 begin
   Log(S);
@@ -408,11 +457,27 @@ begin
   if not Result then Note('  ERRORE: codice ' + IntToStr(Code));
 end;
 
-{ psql con la password nell'ambiente del processo figlio (mai sulla riga di comando di psql); la descrizione non contiene mai password }
+{ psql legge la password da un file temporaneo pgpass (PGPASSFILE): non compare né sulla riga di comando
+  né nella lista dei processi, e i caratteri speciali della password non vanno quotati per cmd.
+  Il file è scritto nella cartella temporanea e cancellato subito dopo l'esecuzione. }
 function Psql(const Desc, User, Pwd, Db, Args: String): Boolean;
+var
+  PassFile: String;
 begin
-  Result := RunStep(Desc, ExpandConstant('{cmd}'),
-    '/S /C "set PGPASSWORD=' + Pwd + '&& "' + PgBase + '\bin\psql.exe" -h 127.0.0.1 -p 5432 -U ' + User + ' -d ' + Db + ' -v ON_ERROR_STOP=1 -q ' + Args + '"');
+  if DryRun then begin Result := RunStep(Desc, '', ''); exit; end;
+  PassFile := ExpandConstant('{tmp}\pgpass.tmp');
+  if not SaveStringToFile('127.0.0.1:5432:' + Db + ':' + User + ':' + Pwd + #13#10, PassFile, False) then
+  begin
+    Note('  ERRORE: impossibile creare il file temporaneo delle credenziali');
+    Result := False;
+    exit;
+  end;
+  try
+    Result := RunStep(Desc, ExpandConstant('{cmd}'),
+      '/S /C "set PGPASSFILE=' + PassFile + '&& "' + PgBase + '\bin\psql.exe" -h 127.0.0.1 -p 5432 -U ' + User + ' -d ' + Db + ' -v ON_ERROR_STOP=1 -q ' + Args + '"');
+  finally
+    DeleteFile(PassFile);
+  end;
 end;
 
 function SecureRandom(N: Integer): String;
@@ -454,13 +519,14 @@ procedure DoInstall;
 var
   SuperPwd, AppPwd, MigPwd, ConnFile, ConfFile, Conf, SecretDir, Cs: String;
   i: Integer;
-  Scripts: array[0..3] of String;
+  Scripts: array[0..4] of String;
   Existing: Boolean;
 begin
   if DryRun then Note('Privacy Studio - installazione (PROVA A SECCO: nessuna modifica)')
   else Note('Privacy Studio - installazione ' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':'));
   SuperPwd := PgPage.Values[0];
   Scripts[0] := '001_schema_v1.sql'; Scripts[1] := '002_catalogs.sql'; Scripts[2] := '003_rules_and_grants.sql'; Scripts[3] := '004_disposal_ledger.sql';
+  Scripts[4] := '005_hardening.sql';
   ConnFile := ExpandConstant('{localappdata}\PrivacyStudio\connection.txt');
   ConfFile := ExpandConstant('{localappdata}\PrivacyStudio\config.json');
 
@@ -556,7 +622,7 @@ begin
   if not Psql('Creazione dei ruoli', 'postgres', SuperPwd, 'privacy', '-f "' + ExpandConstant('{app}') + '\db\000_bootstrap_roles.sql"') then begin Failed := True; exit; end;
   if not Psql('Password del ruolo operativo', 'postgres', SuperPwd, 'privacy', '-c "ALTER ROLE privacy_app PASSWORD ''' + AppPwd + '''"') then begin Failed := True; exit; end;
   if not Psql('Password del ruolo di installazione', 'postgres', SuperPwd, 'privacy', '-c "ALTER ROLE privacy_migrator PASSWORD ''' + MigPwd + '''"') then begin Failed := True; exit; end;
-  for i := 0 to 3 do
+  for i := 0 to 4 do
     if not Psql('Schema: ' + Scripts[i], 'privacy_migrator', MigPwd, 'privacy', '-f "' + ExpandConstant('{app}') + '\db\' + Scripts[i] + '"') then begin Failed := True; exit; end;
 
   { 6. configurazione dell'utente }
@@ -576,11 +642,12 @@ begin
     SecretDir := ExpandConstant('{commonappdata}\PrivacyStudio');
     ForceDirectories(SecretDir);
     SaveStringToFile(SecretDir + '\migrator.secret', MigPwd, False);
-    RunStep('Protezione del file riservato', ExpandConstant('{cmd}'),
-      '/S /C "icacls "' + SecretDir + '\migrator.secret" /inheritance:r /grant:r *S-1-5-32-544:F *S-1-5-18:F"');
+    { se i permessi non si chiudono l'installazione si ferma: un file con una password leggibile da tutti è peggio di un'installazione incompleta }
+    if not RunStep('Protezione del file riservato', ExpandConstant('{cmd}'),
+      '/S /C "icacls "' + SecretDir + '\migrator.secret" /inheritance:r /grant:r *S-1-5-32-544:F *S-1-5-18:F"') then begin Failed := True; exit; end;
     { il file di connessione contiene la password del ruolo operativo: solo l''utente che installa, gli amministratori e il sistema }
-    RunStep('Protezione del file di connessione', ExpandConstant('{cmd}'),
-      '/S /C "icacls "' + ConnFile + '" /inheritance:r /grant:r "' + GetUserNameString + ':F" *S-1-5-32-544:F *S-1-5-18:F"');
+    if not RunStep('Protezione del file di connessione', ExpandConstant('{cmd}'),
+      '/S /C "icacls "' + ConnFile + '" /inheritance:r /grant:r "' + GetUserNameString + ':F" *S-1-5-32-544:F *S-1-5-18:F"') then begin Failed := True; exit; end;
   end
   else Note('> Scrittura di connection.txt, config.json e del file riservato (non eseguita in prova a secco)');
   Note('Fatto.');

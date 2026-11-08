@@ -11,10 +11,10 @@ docker run -d --name "$NAME" -p 127.0.0.1:55432:5432 -e POSTGRES_PASSWORD=x post
 for i in $(seq 1 60); do docker exec "$NAME" psql -U postgres -tAc "select 1" >/dev/null 2>&1 && break; sleep 1; done
 sleep 2
 docker exec "$NAME" psql -U postgres -qc "CREATE DATABASE privacy"
-for f in 000_bootstrap_roles.sql 001_schema_v1.sql 002_catalogs.sql 003_rules_and_grants.sql 004_disposal_ledger.sql; do docker cp "$f" "$NAME:/tmp/$f"; done
+for f in 000_bootstrap_roles.sql 001_schema_v1.sql 002_catalogs.sql 003_rules_and_grants.sql 004_disposal_ledger.sql 005_hardening.sql; do docker cp "$f" "$NAME:/tmp/$f"; done
 docker exec "$NAME" psql -U postgres -d privacy -v ON_ERROR_STOP=1 -q -f /tmp/000_bootstrap_roles.sql
 docker exec "$NAME" psql -U postgres -qc "ALTER ROLE privacy_app PASSWORD 'app'"
-for f in 001_schema_v1.sql 002_catalogs.sql 003_rules_and_grants.sql 004_disposal_ledger.sql; do
+for f in 001_schema_v1.sql 002_catalogs.sql 003_rules_and_grants.sql 004_disposal_ledger.sql 005_hardening.sql; do
   docker exec "$NAME" psql -U privacy_migrator -d privacy -v ON_ERROR_STOP=1 -q -f "/tmp/$f"
 done
 echo "pronto: Host=127.0.0.1;Port=55432;Database=privacy;Username=privacy_app;Password=app"

@@ -312,6 +312,16 @@ SELECT ps_test.expect_ok('privacy_app', 'T09 notifica con protocollo', $q$
   VALUES (ps_test.u(71), 'notification', now(), 'Notifica inviata dal portale', ps_test.u(2), 'PROT-TEST-0001') $q$);
 SELECT ps_test.expect_fail('privacy_app', 'T09 azioni dell''incidente append-only', $q$
   UPDATE ps.incident_actions SET description = 'x' WHERE incident_id = ps_test.u(71) $q$, 'append-only|permission');
+SELECT ps_test.expect_fail('privacy_app', 'T08 chiusura senza valutazione rifiutata', $q$
+  UPDATE ps.incidents SET status_code = 'closed', closed_at = now() WHERE id = ps_test.u(71) $q$, 'valutazione');
+SELECT ps_test.expect_ok('privacy_app', 'T08 valutazione dell''incidente', $q$
+  INSERT INTO ps.incident_assessments (incident_id, assessed_at, assessed_by, risk_level_code, reason, consequences,
+    notification_decision_code, subject_communication_decision_code)
+  VALUES (ps_test.u(71), now(), ps_test.u(2), 'risk', 'Valutazione di test', 'Nessuna conseguenza per gli interessati', 'notify', 'not_communicate') $q$);
+SELECT ps_test.expect_ok('privacy_app', 'T08 chiusura dopo la valutazione', $q$
+  UPDATE ps.incidents SET status_code = 'closed', closed_at = now() WHERE id = ps_test.u(71) $q$);
+SELECT ps_test.expect_fail('privacy_app', 'T08 incidente chiuso immutabile', $q$
+  UPDATE ps.incidents SET closed_at = now() - interval '1 day' WHERE id = ps_test.u(71) $q$, 'chiuso');
 
 -- ===================================================================== T12 conservazione
 SELECT ps_test.expect_fail('privacy_app', 'T12 durata «fissa» senza durata rifiutata', $q$
@@ -426,6 +436,11 @@ SELECT ps_test.expect_eq('SCHEMA nessun CASCADE verso dati di dominio fuori dai 
           'ps.activity_measures','ps.activity_engagements','ps.notice_activity_versions')), NULL);
 SELECT ps_test.expect_eq('SCHEMA tabelle di dominio accessibili solo al ruolo operativo (nessun privilegio a PUBLIC)',
   (SELECT count(*)::text FROM information_schema.role_table_grants WHERE table_schema = 'ps' AND grantee = 'PUBLIC'), '0');
+-- il ruolo operativo deve poter leggere le sequenze: serve a pg_dump, quindi al backup
+SELECT ps_test.expect_eq('SCHEMA tutte le sequenze sono leggibili da privacy_app (backup)',
+  (SELECT count(*)::text FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'ps' AND c.relkind = 'S'
+      AND NOT CASE WHEN c.relkind = 'S' THEN has_sequence_privilege('privacy_app', c.oid, 'USAGE') ELSE true END), '0');
 
 -- ===================================================================== esito
 DO $$

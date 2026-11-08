@@ -492,6 +492,11 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Le sequenze vanno concesse anche in lettura: pg_dump ne legge last_value. Senza questo grant il backup
+-- eseguito dal ruolo operativo (privacy_app) fallisce con «permission denied for sequence audit_seq».
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA ps TO privacy_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE privacy_migrator IN SCHEMA ps GRANT USAGE, SELECT ON SEQUENCES TO privacy_app;
+
 GRANT EXECUTE ON FUNCTION is_non_working(date), compute_due_date(date, int), easter_monday(int),
                           validate_activity_publish(activity_versions),   -- richiamata dal trigger con i privilegi del chiamante
                           verify_audit_chain(), dispose_file(uuid), remove_subject(uuid, uuid, text)
