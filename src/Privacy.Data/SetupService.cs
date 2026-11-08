@@ -24,7 +24,7 @@ public sealed class SetupService
     {
         var problems = PasswordPolicy.Check(password, username);
         if (problems.Count > 0) throw new ArgumentException("password non accettabile: " + string.Join(", ", problems), nameof(password));
-        Guid practice;
+        Guid practice, user;
         await using (var conn = await _db.OpenAsync(ct))
         await using (var tx = await conn.BeginTransactionAsync(ct))
         {
@@ -36,9 +36,10 @@ public sealed class SetupService
                 VALUES ($1,$2,$3,$4,$5,$6,$7,'active') RETURNING id
                 """, ct, p.Name, p.ControllerName, (object?)p.ControllerIdentifier ?? DBNull.Value, p.Address, p.PrivacyContact,
                 (object?)p.Phone ?? DBNull.Value, (object?)p.DpoContact ?? DBNull.Value))!;
+            // stesso commit: se la creazione dell'utente fallisce non resta uno studio senza accesso
+            user = await AuthService.CreateUserInTransactionAsync(conn, tx, practice, username, displayName, password, null, ct);
             await tx.CommitAsync(ct);
         }
-        var user = await new AuthService(_db).CreateUserAsync(practice, username, displayName, password, null, ct);
         return (practice, user);
     }
 }

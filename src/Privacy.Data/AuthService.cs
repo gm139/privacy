@@ -22,15 +22,26 @@ public sealed class AuthService
 
     public async Task<Guid> CreateUserAsync(Guid practiceId, string username, string displayName, string password, Guid? createdBy = null, CancellationToken ct = default)
     {
-        var problems = PasswordPolicy.Check(password, username);
-        if (problems.Count > 0) throw new ArgumentException("password non accettabile: " + string.Join(", ", problems), nameof(password));
         await using var conn = await _db.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
+        var id = await CreateUserInTransactionAsync(conn, tx, practiceId, username, displayName, password, createdBy, ct);
+        await tx.CommitAsync(ct);
+        return id;
+    }
+
+    /// <summary>
+    /// Creazione dell'utente dentro una transazione già aperta. Serve alla prima configurazione, che deve creare
+    /// studio e primo utente nello stesso commit (altrimenti un errore lascia uno studio senza utenti).
+    /// </summary>
+    internal static async Task<Guid> CreateUserInTransactionAsync(NpgsqlConnection conn, NpgsqlTransaction tx, Guid practiceId,
+        string username, string displayName, string password, Guid? createdBy, CancellationToken ct)
+    {
+        var problems = PasswordPolicy.Check(password, username);
+        if (problems.Count > 0) throw new ArgumentException("password non accettabile: " + string.Join(", ", problems), nameof(password));
         var id = (Guid)(await Scalar(conn, tx, """
             INSERT INTO ps.users (practice_id, username, display_name, password_verifier, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id
             """, ct, practiceId, username, displayName, PasswordHasher.Hash(password), (object?)createdBy ?? DBNull.Value))!;
         await Audit(conn, tx, id, "user.create", "user", id, ct);
-        await tx.CommitAsync(ct);
         return id;
     }
 
