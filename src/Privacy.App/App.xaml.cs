@@ -26,6 +26,8 @@ public partial class App : Application
             if (e.Args.Contains("--seed-demo")) { Shutdown(await ScreenshotMode.SeedOnlyAsync()); return; }
             if (e.Args.Contains("--screenshots")) { Shutdown(await ScreenshotMode.RunAsync(services, e.Args[Array.IndexOf(e.Args, "--screenshots") + 1])); return; }
 #endif
+            // allinea il file esterno delle eliminazioni con il database: copre un arresto fra il commit e la scrittura del file
+            await SyncLedgerAsync(services);
             if (e.Args.Contains("--reapply-disposals")) { Shutdown(await ReapplyDisposalsAsync(services)); return; }
             var practice = await services.GetPracticeIdAsync();
             if (practice is null)
@@ -46,6 +48,21 @@ public partial class App : Application
             if (smoke) { Console.Error.WriteLine("SMOKE FAIL (eccezione): " + ex); Shutdown(99); return; }   // niente finestre bloccanti nelle prove automatiche
             MessageBox.Show("Avvio non riuscito. Verificare che il database sia attivo.", "Privacy Studio", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
+        }
+    }
+
+    /// <summary>
+    /// Riallinea il registro esterno delle eliminazioni con il database. Un arresto fra il commit dell'eliminazione
+    /// e la scrittura del file lascerebbe il database senza la copia esterna: dopo un ripristino i dati tornerebbero visibili.
+    /// </summary>
+    private static async Task SyncLedgerAsync(AppServices services)
+    {
+        try { await services.Disposal.SyncLedgerAsync(); }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Registro esterno delle eliminazioni non allineato: " + ex.Message +
+                            "\n\nLe eliminazioni registrate nel database potrebbero non essere nel file esterno.", "Privacy Studio",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -105,7 +122,8 @@ public partial class App : Application
             MessageBox.Show(text, "Ripristino", MessageBoxButton.OK, report.Clean ? MessageBoxImage.Information : MessageBoxImage.Warning);
             return report.Clean ? 0 : 5;
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or BackupFormatException)
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or BackupFormatException
+                                   or Npgsql.PostgresException or IOException or UnauthorizedAccessException)
         {
             MessageBox.Show("Ripristino non eseguito: " + ex.Message, "Ripristino", MessageBoxButton.OK, MessageBoxImage.Error);
             return 3;

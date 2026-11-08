@@ -35,6 +35,19 @@ public static class RestoreService
 
     public static async Task<RestoreReport> RestoreAsync(RestoreRequest req, CancellationToken ct = default)
     {
+        // il nome è validato PRIMA della pulizia: non deve mai finire in un DROP non filtrato
+        if (!System.Text.RegularExpressions.Regex.IsMatch(req.TargetDatabase, "^[a-z][a-z0-9_]{0,62}$"))
+            throw new ArgumentException("nome del database non valido (minuscole, cifre, trattino basso)", nameof(req));
+        try { return await RestoreCoreAsync(req, ct); }
+        catch
+        {
+            await TryDropAsync(req);
+            throw;
+        }
+    }
+
+    private static async Task<RestoreReport> RestoreCoreAsync(RestoreRequest req, CancellationToken ct = default)
+    {
         var started = DateTimeOffset.UtcNow;
         if (!System.Text.RegularExpressions.Regex.IsMatch(req.TargetDatabase, "^[a-z][a-z0-9_]{0,62}$"))
             throw new ArgumentException("nome del database non valido (minuscole, cifre, trattino basso)", nameof(req));
@@ -114,5 +127,28 @@ public static class RestoreService
             }
         }
         return new RestoreReport(req.TargetDatabase, applied, absent, toCheck, broken, recorded, ledgerProvided);
+    }
+
+    /// <summary>Rimuove un database parziale lasciato da un ripristino fallito (l'errore originale viene poi rilanciato).</summary>
+    private static async Task TryDropAsync(RestoreRequest req)
+    {
+        try
+        {
+            var cs = new NpgsqlConnectionStringBuilder(req.AdminConnectionString) { Database = "postgres", Pooling = false };
+            await using var c = new NpgsqlConnection(cs.ConnectionString);
+            await c.OpenAsync();
+            await using (var kill = new NpgsqlCommand(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()", c))
+            {
+                kill.Parameters.AddWithValue(req.TargetDatabase);
+                await kill.ExecuteNonQueryAsync();
+            }
+            await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{req.TargetDatabase}\"", c);
+            await drop.ExecuteNonQueryAsync();
+        }
+        catch
+        {
+            // pulizia best effort: prevale l'errore che ha fatto fallire il ripristino
+        }
     }
 }
