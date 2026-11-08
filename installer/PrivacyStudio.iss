@@ -7,10 +7,10 @@
 ;   2. copiare in redist\ il programma di installazione di PostgreSQL 17 (EDB), nome indicato in PgInstaller
 ;   3. ISCC PrivacyStudio.iss            (installatore completo, circa 0,5 GB)
 ;      ISCC /DNOPG PrivacyStudio.iss     (senza PostgreSQL incorporato: solo per prove rapide)
-; Prova senza toccare il sistema:  PrivacyStudio-Setup-0.9.0.exe /DRYRUN=1 /VERYSILENT /SUPPRESSMSGBOXES
+; Prova senza toccare il sistema:  PrivacyStudio-Setup-0.9.1.exe /DRYRUN=1 /VERYSILENT /SUPPRESSMSGBOXES
 
 #define AppName "Privacy Studio"
-#define AppVersion "0.9.0"
+#define AppVersion "0.9.1"
 #define PgInstaller "redist\postgresql-17.11-1-windows-x64.exe"
 #define PgServiceName "postgresql-x64-17"
 #define PgRegKey "SOFTWARE\PostgreSQL\Installations\postgresql-x64-17"

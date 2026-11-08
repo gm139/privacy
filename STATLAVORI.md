@@ -1,12 +1,12 @@
 # Privacy Studio — Stato dei lavori
 
-Aggiornato: 6 novembre 2026, sera. Da aggiornare **a ogni fine sessione**.
-Versione applicativa: 0.9.0 · Branch `main` · ultimo commit di codice `8844659` (l'ultimo commit può essere successivo: questo file).
+Aggiornato: 8 novembre 2026.
+Versione applicativa: 0.9.1 · Branch `main` · ultimo commit di codice `78ce8bf` (l'ultimo commit può essere successivo: questo file).
 
 ## Fatto (da git e documenti)
 
 - **Documenti 01–04**: analisi normativa, specifica funzionale e dati, piano di test T01–T27, procedura di backup e ripristino.
-- **Fasi A–D della specifica** realizzate in codice (`src/Privacy.Domain`, `Privacy.Data`, `Privacy.App` WPF, .NET 10; schema in `db/000–004`):
+- **Fasi A–D della specifica** realizzate in codice (`src/Privacy.Domain`, `Privacy.Data`, `Privacy.App` WPF, .NET 10; schema in `db/000–005`):
   - F01 registro dei trattamenti (revisioni, pubblicazione, esportazione alla data)
   - F02 informative e consegne (creazione e pubblicazione atomiche)
   - F03 richieste dei diritti (scadenze con `compute_due_date`)
@@ -29,9 +29,9 @@ Fatto nell'installatore (`installer/PrivacyStudio.iss`), compilato ma **non prov
 - Copia esterna **FACOLTATIVA** (decisione del titolare): campo vuoto = nessuna copia, senza domande; se indicata, si controlla che l'unità esista (avviso se è il disco di Windows). Una versione intermedia l'aveva resa obbligatoria: annullata.
 - Come cartella dei backup e copia esterna sono rifiutate radici di disco, Windows, Programmi, Documenti, Desktop e profilo dell'utente.
 - PostgreSQL: chiave di registro senza `bin\psql.exe` = non installato. Cartella `Program Files\PostgreSQL\17` presente ma senza file: viene eliminata (anche prendendo possesso con takeown/icacls se i permessi la bloccano) insieme alla chiave di registro orfana; con file presenti si ferma e spiega. Le due versioni precedenti non bastavano: sul PC di prova l'installazione abortiva ancora.
-- Ultimo installatore in `C:\privacy\PrivacyStudio-Setup-0.9.0.exe` (430088218 byte, 6/11 ore 20:34). Compilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync; SDK in `%LOCALAPPDATA%\Microsoft\dotnet-sdk8`, ISCC in `%LOCALAPPDATA%\Programs\InnoSetup`).
+- Ultimo installatore in `C:\privacy\PrivacyStudio-Setup-0.9.1.exe` (430160955 byte, 8/11 ore 12:52, SHA-256 `A278A5447418E36EB30861C0CCCB5D6217FD8BD0899048F4B05C5317CCB26CCB`). Compilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync; SDK in `%LOCALAPPDATA%\Microsoft\dotnet-sdk8`, ISCC in `%LOCALAPPDATA%\Programs\InnoSetup`).
 
-## Da fare domani (7 novembre)
+## Da fare
 
 1. **Scegliere come portare i file al PC di prova** (un Huawei con solo Windows, a casa, NON nella tailnet): cartella condivisa `\\lenmau\privacy` (consigliata, la condivisione la attiva il titolare), chiavetta USB, oppure Tailscale/Taildrop (non consigliato: lo collegherebbe a NAS e server). Non toccare `bardini-evo-x3` né le altre macchine.
 2. **Provare l'installatore** sul PC di prova (o meglio in Windows Sandbox / VM con checkpoint; la Sandbox richiede Windows Pro e perde tutto alla chiusura: per la prova del ripristino T24 tenere il backup in una cartella condivisa dedicata). Casi da osservare: cartella `PostgreSQL\17` vuota, copia esterna vuota e indicata, prima configurazione in due passaggi, primo backup.
@@ -45,7 +45,7 @@ Fatto nell'installatore (`installer/PrivacyStudio.iss`), compilato ma **non prov
 
 1. **Prova dell'installatore su Windows pulito** (Sandbox o macchina virtuale con checkpoint): è il blocco principale. Finora verificato solo con `/DRYRUN=1`. Seguire la lista di prova; verificare anche PostgreSQL e `pg_restore` veri (T24/T25 finora provati solo in Docker).
 2. **Rapporto dei test T01–T27 con evidenze**: non esiste ancora un rapporto consolidato. Da eseguire la suite e registrare l'esito (in questa sessione non l'ho ancora lanciata: `dotnet` non è nel PATH di WSL).
-3. **Procedura di aggiornamento dello schema** (migrazioni per versioni successive alla 0.9.0).
+3. **Procedura di aggiornamento dello schema** (migrazioni per versioni successive alla 0.9.1).
 4. **Firma digitale del codice** e dell'installatore.
 5. **Pianificazione automatica del backup** (oggi solo manuale); cifratura a flusso per database grandi.
 6. **Protezione del registro esterno delle eliminazioni** (ora non cifrato né firmato).

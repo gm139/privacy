@@ -4,7 +4,7 @@ Applicazione desktop Windows per gestire gli adempimenti privacy/GDPR di uno **s
 
 Il programma documenta attività e scadenze e aiuta a dimostrare il lavoro fatto. **Non è una consulenza legale e non certifica la conformità** al Regolamento (UE) 2016/679: le valutazioni restano in capo al titolare del trattamento e al suo consulente.
 
-> **Stato: 0.9.0 — pre-rilascio.**
+> **Stato: 0.9.1 — pre-rilascio.**
 > Non usare con dati reali dei pazienti. L'applicazione è stata provata con dati sintetici e test automatici, non ancora con dati reali né su un Windows pulito. L'installer non è firmato. Le condizioni da soddisfare prima dell'uso con dati reali sono elencate in [`docs/03-Piano-di-Test-e-Rilascio.md`](docs/03-Piano-di-Test-e-Rilascio.md) (§6).
 
 ## Funzioni
@@ -108,7 +108,7 @@ dotnet publish ..\src\Privacy.App -c Release -r win-x64 --self-contained true -o
 ISCC PrivacyStudio.iss
 ```
 
-Gli asset precompilati sono nella pagina [Releases](../../releases). La versione `v0.9.0` include installer, manuale PDF e lista di prova dell'installazione.
+Gli asset precompilati sono nella pagina [Releases](../../releases). La versione `v0.9.1` include installer, manuale PDF e lista di prova dell'installazione.
 
 ## Documentazione
 
@@ -122,7 +122,7 @@ Gli asset precompilati sono nella pagina [Releases](../../releases). La versione
 
 ## Stato e limiti noti
 
-- Versione **0.9.0**, da considerare una bozza: mancano la prova dell'installazione su un Windows pulito, il rapporto consolidato dei test T01–T27, la firma digitale di codice e installer e la procedura di aggiornamento dello schema.
+- Versione **0.9.1**, da considerare una bozza: mancano la prova dell'installazione su un Windows pulito, il rapporto consolidato dei test T01–T27, la firma digitale di codice e installer e la procedura di aggiornamento dello schema.
 - Il backup è manuale; non è ancora pianificato automaticamente.
 - Il registro esterno delle eliminazioni non è cifrato né firmato.
 - La scelta definitiva sulla cifratura di anagrafica e testi liberi (decisione D-ENC) è ancora aperta.
