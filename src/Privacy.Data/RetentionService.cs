@@ -4,13 +4,13 @@ using static Privacy.Data.SqlHelpers;
 namespace Privacy.Data;
 
 public sealed record PolicyDraft(string RecordClassCode, string TriggerCode, string DurationKindCode, int? Months, int? Days,
-    string? Criterion, string? LegalReference, DateOnly ReviewDueOn);
+    string? Criterion, string? LegalReference, DateOnly ReviewDueOn, Guid? PolicyKey = null);
 
 public sealed record ExpiringItem(string RecordClassCode, string ItemType, Guid ItemId, string Reference, DateOnly BaseDate,
     DateOnly ExpiredOn, Guid PolicyVersionId, string Reason);
 
 public sealed record PolicyRow(Guid Id, string RecordClassCode, string TriggerCode, string DurationKindCode, int? Months, int? Days,
-    string? Criterion, DateOnly ReviewDueOn, string StatusCode);
+    string? Criterion, string? LegalReference, DateOnly ReviewDueOn, string StatusCode, Guid PolicyKey, int VersionNumber);
 
 public sealed record ManualReviewItem(Guid PolicyVersionId, string RecordClassCode, string DurationKindCode, string Criterion, DateOnly ReviewDueOn);
 
@@ -23,16 +23,33 @@ public sealed class RetentionService
     private readonly Db _db;
     public RetentionService(Db db) => _db = db;
 
+    /// <summary>
+    /// Crea una bozza. Se <see cref="PolicyDraft.PolicyKey"/> è indicato la bozza è una NUOVA VERSIONE della regola
+    /// esistente (stesso policy_key, numero successivo); altrimenti nasce una regola nuova. Senza questa distinzione
+    /// ogni bozza avrebbe una chiave diversa e l'approvazione non potrebbe superare la versione precedente.
+    /// </summary>
     public async Task<Guid> CreateDraftAsync(Guid commandId, Guid practiceId, Guid actorId, PolicyDraft p, CancellationToken ct = default)
     {
         await using var conn = await _db.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "create_policy", ct) is { } existing) return existing;
+        var policyKey = p.PolicyKey ?? Guid.NewGuid();
+        var versionNumber = 1;
+        if (p.PolicyKey is { } key)
+        {
+            var next = (int)(await Scalar(conn, tx, """
+                SELECT COALESCE(MAX(version_number), 0) + 1 FROM ps.retention_policy_versions
+                WHERE practice_id = $1 AND policy_key = $2
+                """, ct, practiceId, key))!;
+            if (next == 1) throw new InvalidOperationException("la regola di partenza non esiste: creare una regola nuova");
+            versionNumber = next;
+        }
         var id = (Guid)(await Scalar(conn, tx, """
-            INSERT INTO ps.retention_policy_versions (practice_id, record_class_code, trigger_code, duration_kind_code, duration_months, duration_days,
-                criterion, legal_reference, review_due_on, created_by)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
-            """, ct, practiceId, p.RecordClassCode, p.TriggerCode, p.DurationKindCode, (object?)p.Months ?? DBNull.Value, (object?)p.Days ?? DBNull.Value,
+            INSERT INTO ps.retention_policy_versions (practice_id, policy_key, version_number, record_class_code, trigger_code,
+                duration_kind_code, duration_months, duration_days, criterion, legal_reference, review_due_on, created_by)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id
+            """, ct, practiceId, policyKey, versionNumber, p.RecordClassCode, p.TriggerCode, p.DurationKindCode,
+            (object?)p.Months ?? DBNull.Value, (object?)p.Days ?? DBNull.Value,
             (object?)p.Criterion ?? DBNull.Value, (object?)p.LegalReference ?? DBNull.Value, p.ReviewDueOn, actorId))!;
         await Audit(conn, tx, actorId, "retention.create", "retention_policy", id, ct);
         await SetResult(conn, tx, commandId, id, ct);
@@ -50,7 +67,9 @@ public sealed class RetentionService
             UPDATE ps.retention_policy_versions SET status_code = 'superseded'
             WHERE status_code = 'approved' AND policy_key = (SELECT policy_key FROM ps.retention_policy_versions WHERE id = $1)
             """, ct, policyVersionId);
-        await Exec(conn, tx, "UPDATE ps.retention_policy_versions SET status_code = 'approved', approved_by = $2, approved_at = now() WHERE id = $1 AND status_code = 'draft'", ct, policyVersionId, approverId);
+        var changed = await Exec(conn, tx, "UPDATE ps.retention_policy_versions SET status_code = 'approved', approved_by = $2, approved_at = now() WHERE id = $1 AND status_code = 'draft'", ct, policyVersionId, approverId);
+        // niente audit «riuscito» quando non è cambiato nulla: l'approvazione deve essere reale
+        if (changed == 0) throw new InvalidOperationException("la regola non è in bozza: approvazione non eseguita");
         await Audit(conn, tx, approverId, "retention.approve", "retention_policy", policyVersionId, ct);
         await SetResult(conn, tx, commandId, policyVersionId, ct);
         await tx.CommitAsync(ct);
@@ -104,7 +123,8 @@ public sealed class RetentionService
     {
         await using var conn = await _db.OpenAsync(ct);
         await using var cmd = new NpgsqlCommand("""
-            SELECT id, record_class_code, trigger_code, duration_kind_code, duration_months, duration_days, criterion, review_due_on, status_code
+            SELECT id, record_class_code, trigger_code, duration_kind_code, duration_months, duration_days, criterion, legal_reference,
+                   review_due_on, status_code, policy_key, version_number
             FROM ps.retention_policy_versions WHERE practice_id = $1 AND status_code <> 'superseded' ORDER BY record_class_code, version_number DESC
             """, conn);
         cmd.Parameters.AddWithValue(practiceId);
@@ -112,7 +132,8 @@ public sealed class RetentionService
         await using var r = await cmd.ExecuteReaderAsync(ct);
         while (await r.ReadAsync(ct))
             list.Add(new PolicyRow(r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetString(3), r.IsDBNull(4) ? null : r.GetInt32(4),
-                r.IsDBNull(5) ? null : r.GetInt32(5), r.IsDBNull(6) ? null : r.GetString(6), DateOnly.FromDateTime(r.GetDateTime(7)), r.GetString(8)));
+                r.IsDBNull(5) ? null : r.GetInt32(5), r.IsDBNull(6) ? null : r.GetString(6), r.IsDBNull(7) ? null : r.GetString(7),
+                DateOnly.FromDateTime(r.GetDateTime(8)), r.GetString(9), r.GetGuid(10), r.GetInt32(11)));
         return list;
     }
 

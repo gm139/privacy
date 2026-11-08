@@ -51,7 +51,8 @@
                     <TextBlock Text="Regole di conservazione" FontWeight="SemiBold"/>
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
                         <Button Padding="14,6" Content="Nuova _regola…" Click="OnNewPolicy" TabIndex="40"/>
-                        <Button Padding="14,6" Content="Appro_va selezionata" Click="OnApprovePolicy" Margin="8,0,0,0" TabIndex="41"/>
+                        <Button Padding="14,6" Content="Nuova _versione…" Click="OnNewPolicyVersion" Margin="8,0,0,0" TabIndex="41"/>
+                        <Button Padding="14,6" Content="Appro_va selezionata" Click="OnApprovePolicy" Margin="8,0,0,0" TabIndex="42"/>
                     </StackPanel>
                     <DataGrid GridLinesVisibility="Horizontal" RowHeight="30" x:Name="PoliciesGrid" Height="150" IsReadOnly="True" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single"
                               AutomationProperties.Name="Regole di conservazione">

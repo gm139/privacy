@@ -159,6 +159,19 @@ public partial class MainWindow : Window
         catch (Exception) { StatusText.Text = "Impossibile aprire il modulo."; }
     }
 
+    private async void OnNewPolicyVersion(object sender, RoutedEventArgs e)
+    {
+        if (PoliciesGrid.SelectedItem is not PolicyGridRow row) { StatusText.Text = "Selezionare la regola da versionare."; return; }
+        try
+        {
+            var cat = _services.Catalog;
+            var from = _policies.First(p => p.Id == row.Id);
+            var w = new NewPolicyWindow(_services, _practiceId, _userId, await cat.GetAsync("cat_record_class"), await cat.GetAsync("cat_retention_trigger"), await cat.GetAsync("cat_duration_kind"), from) { Owner = this };
+            if (w.ShowDialog() == true) await LoadAsync();
+        }
+        catch (Exception) { StatusText.Text = "Impossibile aprire il modulo."; }
+    }
+
     private async void OnApprovePolicy(object sender, RoutedEventArgs e)
     {
         if (PoliciesGrid.SelectedItem is not PolicyGridRow row) { StatusText.Text = "Selezionare una regola."; return; }

@@ -87,6 +87,47 @@ public class RetentionTests
     }
 
     [Fact]
+    public async Task NewVersion_SupersedesPrevious_AndExpiredListDoesNotDuplicate()
+    {
+        if (Conn is null) return;
+        var (db, practice, user) = await SetupAsync();
+        var requests = new RightsRequestService(db);
+        var svc = new RetentionService(db);
+        var id = await requests.RegisterAsync(new RegisterRequestCommand(Guid.NewGuid(), practice, user, null, "Mario (collab.)", "other", "email",
+            DateTimeOffset.UtcNow, "Copia dati", new[] { "access" }));
+        await requests.DecideAsync(Guid.NewGuid(), id, user, "access", "granted", null, DateTimeOffset.UtcNow);
+        await requests.CloseAsync(Guid.NewGuid(), id, user);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var v1 = await svc.CreateDraftAsync(Guid.NewGuid(), practice, user,
+            new PolicyDraft("requests", "request_closed", "fixed", 1, null, null, null, today.AddYears(1)));
+        await svc.ApproveAsync(Guid.NewGuid(), v1, user);
+        var key = (await svc.ListPoliciesAsync(practice)).Single().PolicyKey;
+        var v2 = await svc.CreateDraftAsync(Guid.NewGuid(), practice, user,
+            new PolicyDraft("requests", "request_closed", "fixed", 2, null, null, null, today.AddYears(1), key));
+        await svc.ApproveAsync(Guid.NewGuid(), v2, user);
+
+        // la versione precedente è superata e la lista scaduti contiene UNA riga sola per la richiesta
+        await using var c = await db.OpenAsync();
+        await using var q = new NpgsqlCommand("SELECT status_code FROM ps.retention_policy_versions WHERE id = $1", c);
+        q.Parameters.AddWithValue(v1);
+        Assert.Equal("superseded", (string)(await q.ExecuteScalarAsync())!);
+        var expired = await svc.ListExpiredAsync(practice, today.AddMonths(4));
+        Assert.Single(expired);
+        Assert.Equal(v2, expired[0].PolicyVersionId);
+    }
+
+    [Fact]
+    public async Task NewVersion_OfUnknownPolicyKey_IsRejected()
+    {
+        if (Conn is null) return;
+        var (db, practice, user) = await SetupAsync();
+        var svc = new RetentionService(db);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CreateDraftAsync(Guid.NewGuid(), practice, user,
+            new PolicyDraft("requests", "request_closed", "fixed", 1, null, null, null, new DateOnly(2027, 1, 1), Guid.NewGuid())));
+    }
+
+    [Fact]
     public async Task ListPolicies_ShowsDraftsAndApproved_NotSuperseded()
     {
         if (Conn is null) return;
