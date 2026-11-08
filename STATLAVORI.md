@@ -1,7 +1,7 @@
 # Privacy Studio — Stato dei lavori
 
 Aggiornato: 8 novembre 2026.
-Versione applicativa: 0.9.2 · Branch `main` · ultimo commit di codice: vedere `git log -1` (questo file può essere aggiornato dopo l'ultimo commit).
+Versione applicativa: 0.9.3 · Branch `main` · ultimo commit di codice: vedere `git log -1` (questo file può essere aggiornato dopo l'ultimo commit).
 
 ## Fatto (da git e documenti)
 
@@ -28,8 +28,8 @@ Versione applicativa: 0.9.2 · Branch `main` · ultimo commit di codice: vedere 
 Fatto nell'installatore (`installer/PrivacyStudio.iss`), compilato ma **non provato**:
 - Copia esterna **FACOLTATIVA** (decisione del titolare): campo vuoto = nessuna copia, senza domande; se indicata, si controlla che l'unità esista (avviso se è il disco di Windows). Una versione intermedia l'aveva resa obbligatoria: annullata.
 - Come cartella dei backup e copia esterna sono rifiutate radici di disco, Windows, Programmi, Documenti, Desktop e profilo dell'utente.
-- PostgreSQL: chiave di registro senza `bin\psql.exe` = non installato. Cartella `Program Files\PostgreSQL\17` presente ma senza file: viene eliminata (anche prendendo possesso con takeown/icacls se i permessi la bloccano) insieme alla chiave di registro orfana; con file presenti si ferma e spiega. Le due versioni precedenti non bastavano: sul PC di prova l'installazione abortiva ancora.
-- Ultimo installatore in `C:\privacy\PrivacyStudio-Setup-0.9.2.exe` (430160969 byte, 8/11 ore 13:15, SHA-256 `D78B432E2D93F6CC4A975C93BE05855AF8A431F865EEB3FA6968949E1ABB5182`). Compilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync; SDK in `%LOCALAPPDATA%\Microsoft\dotnet-sdk8`, ISCC in `%LOCALAPPDATA%\Programs\InnoSetup`).
+- PostgreSQL: presente solo se esistono `bin\psql.exe` **e** il servizio `postgresql-x64-17` (né la sola chiave di registro né la sola cartella bastano: erano entrambe fonti di falsi positivi/negativi). Residui di un tentativo interrotto (cartella non vuota, servizio o utente `postgres` rimasti) e **nessun** database (`data\PG_VERSION` assente): l'installatore chiede il permesso e li rimuove da solo (servizio, cartella con takeown/icacls, chiave di registro, utente). Se trova un database, o `psql.exe` senza servizio, si ferma senza toccare nulla. Dopo l'installatore di PostgreSQL verifica il risultato (`psql.exe` + servizio), attende `pg_isready` e fallisce con i registri se non risponde; richiede almeno 3 GB liberi.
+- Ultimo installatore in `C:\privacy\PrivacyStudio-Setup-0.9.3.exe` (430161807 byte, 8/11 ore 13:43, SHA-256 `9E3011D57DB4053635F5882781B825C44A3A3D31FF9FFA6093DC05AB03B099BB`). Compilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync; SDK in `%LOCALAPPDATA%\Microsoft\dotnet-sdk8`, ISCC in `%LOCALAPPDATA%\Programs\InnoSetup`).
 
 ## Da fare
 
@@ -45,7 +45,7 @@ Fatto nell'installatore (`installer/PrivacyStudio.iss`), compilato ma **non prov
 
 1. **Prova dell'installatore su Windows pulito** (Sandbox o macchina virtuale con checkpoint): è il blocco principale. Finora verificato solo con `/DRYRUN=1`. Seguire la lista di prova; verificare anche PostgreSQL e `pg_restore` veri (T24/T25 finora provati solo in Docker).
 2. **Rapporto dei test T01–T27 con evidenze**: non esiste ancora un rapporto consolidato. Da eseguire la suite e registrare l'esito (in questa sessione non l'ho ancora lanciata: `dotnet` non è nel PATH di WSL).
-3. **Procedura di aggiornamento dello schema** (migrazioni per versioni successive alla 0.9.2).
+3. **Procedura di aggiornamento dello schema** (migrazioni per versioni successive alla 0.9.3).
 4. **Firma digitale del codice** e dell'installatore.
 5. **Pianificazione automatica del backup** (oggi solo manuale); cifratura a flusso per database grandi.
 6. **Protezione del registro esterno delle eliminazioni** (ora non cifrato né firmato).

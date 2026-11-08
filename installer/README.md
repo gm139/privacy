@@ -14,11 +14,16 @@ ISCC /DNOPG PrivacyStudio.iss     # senza PostgreSQL incorporato, per prove rapi
 Prova a secco (per utente, senza amministratore, in una cartella temporanea):
 
 ```
-PrivacyStudio-Setup-0.9.2.exe /DRYRUN=1 /PGPASSWORD=ProvaPassword-123 /EXTERNALDIR=<cartella esistente> /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR=<cartella> /LOG=<file>
+PrivacyStudio-Setup-0.9.3.exe /DRYRUN=1 /PGPASSWORD=ProvaPassword-123 /EXTERNALDIR=<cartella esistente> /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR=<cartella> /LOG=<file>
 ```
 
 Cosa fa l'installazione reale: installa PostgreSQL 17 (se manca) in modo non interattivo, lo limita a `localhost`, crea database `privacy` e ruoli con password casuali,
 applica gli script db\000-005, scrive `connection.txt` e `config.json` nel profilo dell'utente, un file riservato agli amministratori con la password del ruolo di installazione,
 crea cartelle di backup e collegamenti. La disinstallazione non cancella database, backup e chiavi.
+
+PostgreSQL è considerato presente solo se esistono `bin\psql.exe` **e** il servizio `postgresql-x64-17` (la sola chiave di registro o la sola cartella non bastano).
+Se trova i residui di un tentativo interrotto (cartella non vuota, programmi, servizio o utente `postgres` rimasti) e **nessun database** (`data\PG_VERSION` assente), chiede il permesso e li rimuove;
+se invece trova un database si ferma senza toccare nulla. Dopo aver eseguito l'installatore di PostgreSQL verifica che `psql.exe` e il servizio esistano davvero,
+controlla che il servizio risponda su `127.0.0.1:5432` e richiede almeno 3 GB liberi prima di iniziare.
 
 Da fare prima del rilascio: prova su Windows pulito (anche macchina virtuale), firma digitale del codice, procedura di aggiornamento dello schema.

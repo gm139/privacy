@@ -46,7 +46,7 @@ def story():
     # ---------------------------------------------------------------- 4
     s += H1("4. Installazione")
     s += H2("4.0 Installazione guidata (consigliata)")
-    s += [P("Il programma di installazione <b>PrivacyStudio-Setup-0.9.2.exe</b> fa in un solo passaggio ciò che i punti 4.1-4.5 descrivono a mano. Va eseguito <b>dall'utente Windows che userà il programma</b> (con i permessi di amministratore, che Windows chiede), "
+    s += [P("Il programma di installazione <b>PrivacyStudio-Setup-0.9.3.exe</b> fa in un solo passaggio ciò che i punti 4.1-4.5 descrivono a mano. Va eseguito <b>dall'utente Windows che userà il programma</b> (con i permessi di amministratore, che Windows chiede), "
             "perché i file di connessione e le chiavi sono personali di quell'utente.")]
     s += STEPS([
         "Avviare il programma di installazione e confermare la richiesta di Windows. Scegliere la cartella del programma (di norma quella proposta).",
@@ -57,6 +57,7 @@ def story():
     ])
     s += BUL([
         "Le password dei due ruoli del database non vanno mai digitate dall'utente: la password del ruolo operativo è nel file <font name='UM'>connection.txt</font> dell'utente; quella del ruolo di installazione è in un file riservato agli amministratori, nella cartella dei dati comuni di Windows.",
+        "Se un tentativo precedente si è interrotto, il programma può trovare i residui di PostgreSQL (cartella, servizio o utente <font name='UM'>postgres</font>). Se non c'è <b>nessun database</b> da conservare, chiede il permesso e li rimuove da solo; se trova un database si ferma senza toccare nulla.",
         "Se il database dello studio esiste già (aggiornamento del programma), l'installazione <b>non tocca i dati</b>. L'aggiornamento dello schema non è ancora automatico (punto 15 del cap. 9).",
         "La <b>disinstallazione</b> rimuove il programma ma <b>non</b> il database, i backup e le chiavi, che contengono dati dello studio.",
         "Per l'assistenza tecnica: l'installazione può essere non interattiva con i parametri <font name='UM'>/VERYSILENT /PGPASSWORD=… /EXTERNALDIR=…</font>; con <font name='UM'>/DRYRUN=1</font> mostra cosa farebbe senza modificare nulla.",

@@ -7,10 +7,10 @@
 ;   2. copiare in redist\ il programma di installazione di PostgreSQL 17 (EDB), nome indicato in PgInstaller
 ;   3. ISCC PrivacyStudio.iss            (installatore completo, circa 0,5 GB)
 ;      ISCC /DNOPG PrivacyStudio.iss     (senza PostgreSQL incorporato: solo per prove rapide)
-; Prova senza toccare il sistema:  PrivacyStudio-Setup-0.9.2.exe /DRYRUN=1 /VERYSILENT /SUPPRESSMSGBOXES
+; Prova senza toccare il sistema:  PrivacyStudio-Setup-0.9.3.exe /DRYRUN=1 /VERYSILENT /SUPPRESSMSGBOXES
 
 #define AppName "Privacy Studio"
-#define AppVersion "0.9.2"
+#define AppVersion "0.9.3"
 #define PgInstaller "redist\postgresql-17.11-1-windows-x64.exe"
 #define PgServiceName "postgresql-x64-17"
 #define PgRegKey "SOFTWARE\PostgreSQL\Installations\postgresql-x64-17"
@@ -79,6 +79,22 @@ end;
 function NeedPostgres: Boolean;
 begin
   Result := not PgExists;
+end;
+
+{ il servizio è la prova che PostgreSQL è installato davvero: la sola cartella può essere un residuo }
+function PgServiceRegistered: Boolean;
+begin
+  Result := RegKeyExists(HKLM64, 'SYSTEM\CurrentControlSet\Services\{#PgServiceName}');
+end;
+
+{ l'installatore di PostgreSQL occupa circa 1 GB, oltre ai 410 MB già estratti: sotto 3 GB liberi fallisce a metà }
+function EnoughSpace: Boolean;
+var
+  FreeMB, TotalMB: Cardinal;
+begin
+  Result := True;
+  if GetSpaceOnDisk(ExpandConstant('{sd}'), True, FreeMB, TotalMB) then
+    Result := FreeMB >= 3000;
 end;
 
 { solo il nome utente, senza dominio o nome del computer }
@@ -240,13 +256,15 @@ var
   W, BtnW: Integer;
 begin
   LogFile := ExpandConstant('{tmp}\privacy-setup.log');
-  PgExists := RegKeyExists(HKLM64, '{#PgRegKey}');
-  if PgExists then
-  begin
+  PgBase := '';
+  PgExists := False;
+  if RegKeyExists(HKLM64, '{#PgRegKey}') then
     RegQueryStringValue(HKLM64, '{#PgRegKey}', 'Base Directory', PgBase);
-    { chiave di registro rimasta ma cartella vuota o senza programmi (disinstallazione incompleta): PostgreSQL NON è installato }
-    if not FileExists(PgBase + '\bin\psql.exe') then PgExists := False;
-  end;
+  if (PgBase = '') or not FileExists(PgBase + '\bin\psql.exe') then
+    PgBase := ExpandConstant('{autopf}\PostgreSQL\17');
+  { PostgreSQL è utilizzabile solo se ci sono i programmi E il servizio: la chiave di registro
+    da sola può essere un residuo, la cartella da sola un'installazione interrotta. }
+  PgExists := FileExists(PgBase + '\bin\psql.exe') and PgServiceRegistered;
   if PgExists then
   begin
     PgPage := CreateInputQueryPage(wpSelectDir, 'Database', 'PostgreSQL è già installato',
@@ -424,6 +442,34 @@ begin
   Result := not DirExists(Dir);
 end;
 
+{ Rimuove i residui di un'installazione di PostgreSQL interrotta: servizio, cartella (anche NON vuota),
+  chiave di registro e utente Windows «postgres». Da usare solo dopo aver escluso la presenza di un database:
+  DoInstall chiama questa routine soltanto se data\PG_VERSION non esiste. Restituisce vero se la cartella è sparita. }
+function CleanPgResidue(const Dir: String): Boolean;
+var
+  Code: Integer;
+  Root: String;
+begin
+  Result := False;
+  if (Pos('\PostgreSQL', Dir) = 0) or (Length(Dir) < 20) then exit;
+  { il servizio va fermato e cancellato prima dei file: altrimenti può ricrearli o restare registrato }
+  Exec(ExpandConstant('{cmd}'), '/S /C "sc stop {#PgServiceName} >nul 2>&1 & sc delete {#PgServiceName} >nul 2>&1"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  DelTree(Dir, True, True, True);
+  if DirExists(Dir) then
+  begin
+    Note('Cartella ' + Dir + ' non eliminabile: prendo possesso e correggo i permessi.');
+    Exec(ExpandConstant('{cmd}'), '/S /C "takeown /f "' + Dir + '" /a /r /d y >nul 2>&1 <nul"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    Exec(ExpandConstant('{cmd}'), '/S /C "icacls "' + Dir + '" /grant *S-1-5-32-544:F /t /c /q >nul 2>&1 <nul"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    DelTree(Dir, True, True, True);
+  end;
+  Root := ExtractFileDir(Dir);
+  if DirExists(Root) and not DirNotEmpty(Root) then DelTree(Root, True, True, True);
+  RegDeleteKeyIncludingSubkeys(HKLM64, '{#PgRegKey}');
+  if WindowsUserExists('postgres') then
+    Exec(ExpandConstant('{cmd}'), '/S /C "net user postgres /delete >nul 2>&1"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Result := not DirExists(Dir);
+end;
+
 { copia nella cartella del programma i registri dell'installatore di PostgreSQL (di solito in %TEMP%) }
 procedure CollectPgLogs;
 var
@@ -517,10 +563,10 @@ end;
 
 procedure DoInstall;
 var
-  SuperPwd, AppPwd, MigPwd, ConnFile, ConfFile, Conf, SecretDir, Cs: String;
+  SuperPwd, AppPwd, MigPwd, ConnFile, ConfFile, Conf, SecretDir, Cs, PgDir: String;
   i: Integer;
   Scripts: array[0..4] of String;
-  Existing: Boolean;
+  Existing, Ready: Boolean;
 begin
   if DryRun then Note('Privacy Studio - installazione (PROVA A SECCO: nessuna modifica)')
   else Note('Privacy Studio - installazione ' + GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':'));
@@ -533,44 +579,43 @@ begin
   { 1. PostgreSQL }
   if not PgExists then
   begin
+    PgDir := ExpandConstant('{autopf}\PostgreSQL\17');
     { residui di un'installazione precedente rimasta a metà: fanno fallire l'installatore di PostgreSQL }
     if not DryRun then
     begin
-      if WindowsUserExists('postgres') then
+      { un database da conservare non si tocca in nessun caso }
+      if FileExists(PgDir + '\data\PG_VERSION') then
       begin
-        Note('Esiste già un utente Windows «postgres» ma PostgreSQL 17 non risulta installato.');
-        MsgBox('Sul computer esiste già un utente Windows chiamato «postgres», ma PostgreSQL 17 non risulta installato: di solito è il residuo di un''installazione interrotta. ' +
-               'L''installatore di PostgreSQL in questo caso fallisce.' + #13#10 + #13#10 +
-               'Da un prompt dei comandi come amministratore: net user postgres /delete' + #13#10 +
-               'poi eliminare la cartella ' + ExpandConstant('{autopf}') + '\PostgreSQL (se esiste) e rieseguire questo programma di installazione.', mbError, MB_OK);
+        Note('La cartella ' + PgDir + ' contiene un database PostgreSQL ma il servizio non è registrato.');
+        MsgBox('La cartella ' + PgDir + ' contiene un database PostgreSQL (data\PG_VERSION) ma il servizio «{#PgServiceName}» non risulta installato. ' +
+               'Per non rischiare di perdere dati la cartella non viene toccata: contattare l''assistenza prima di procedere.', mbError, MB_OK);
         Failed := True; exit;
       end;
-      { cartella di PostgreSQL presente ma senza file (residuo di una disinstallazione): va tolta, altrimenti l'installatore di PostgreSQL fallisce }
-      if DirExists(ExpandConstant('{autopf}\PostgreSQL\17')) and not TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL\17')) then
+      { residuo vero e proprio: cartella non vuota, eventuali programmi, servizio e/o utente «postgres» rimasti, nessun database }
+      if TreeHasFiles(PgDir) or PgServiceRegistered or WindowsUserExists('postgres') then
       begin
-        if RemoveEmptyPgDir(ExpandConstant('{autopf}\PostgreSQL\17')) then
-          Note('Cartella PostgreSQL 17 vuota: eliminata.')
-        else
+        Note('Residui di PostgreSQL: cartella=' + IntToStr(Ord(TreeHasFiles(PgDir))) +
+             ' servizio=' + IntToStr(Ord(PgServiceRegistered)) +
+             ' utente=' + IntToStr(Ord(WindowsUserExists('postgres'))));
+        if MsgBox('Sul computer restano i residui di un''installazione di PostgreSQL interrotta (cartella ' + PgDir + ', eventuali programmi, servizio e/o utente «postgres») e non esiste alcun database. ' +
+                  'Vanno rimossi, altrimenti l''installatore di PostgreSQL fallisce. Rimuoverli ora?', mbConfirmation, MB_YESNO) <> IDYES then
         begin
-          Note('Cartella PostgreSQL 17 vuota ma non eliminabile.');
-          MsgBox('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' è vuota ma non riesco a eliminarla (è aperta in Esplora file o in un altro programma?). ' +
-                 'Chiuderla, poi riavviare il computer e rieseguire questo programma di installazione.', mbError, MB_OK);
+          Note('Rimozione dei residui rifiutata.');
+          MsgBox('Senza rimuovere i residui l''installazione non può continuare: eliminare la cartella ' + PgDir + ', il servizio «{#PgServiceName}» e l''utente Windows «postgres», poi rieseguire.', mbError, MB_OK);
           Failed := True; exit;
         end;
-        if DirExists(ExpandConstant('{autopf}\PostgreSQL')) and not TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL')) then
-          RemoveEmptyPgDir(ExpandConstant('{autopf}\PostgreSQL'));
+        if not CleanPgResidue(PgDir) then
+        begin
+          Note('Rimozione dei residui non riuscita.');
+          MsgBox('Non sono riuscito a rimuovere ' + PgDir + '. Chiudere Esplora file e ogni programma che la usa, riavviare il computer e rieseguire questo programma di installazione.', mbError, MB_OK);
+          Failed := True; exit;
+        end;
+        Note('Residui di PostgreSQL rimossi.');
       end;
-      { chiave di registro rimasta senza programmi: va tolta, altrimenti l'installatore di PostgreSQL la scambia per un'installazione esistente }
-      if RegKeyExists(HKLM64, '{#PgRegKey}') then
+      if not EnoughSpace then
       begin
-        Note('Chiave di registro di PostgreSQL senza programmi: eliminata.');
-        RegDeleteKeyIncludingSubkeys(HKLM64, '{#PgRegKey}');
-      end;
-      if TreeHasFiles(ExpandConstant('{autopf}\PostgreSQL\17')) then
-      begin
-        Note('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' esiste già e non è vuota.');
-        MsgBox('La cartella ' + ExpandConstant('{autopf}\PostgreSQL\17') + ' esiste già e non è vuota, ma PostgreSQL 17 non risulta installato. ' +
-               'Probabile residuo di un''installazione interrotta: eliminarla (dopo aver controllato che non contenga dati da conservare) e rieseguire.', mbError, MB_OK);
+        Note('Spazio libero insufficiente sul disco di Windows.');
+        MsgBox('Per installare PostgreSQL 17 servono almeno 3 GB liberi su ' + ExpandConstant('{sd}') + '. Liberare spazio e rieseguire questo programma di installazione.', mbError, MB_OK);
         Failed := True; exit;
       end;
     end;
@@ -583,17 +628,44 @@ begin
       if not DryRun then CollectPgLogs;
       Failed := True; exit;
     end;
-    if not DryRun then RegQueryStringValue(HKLM64, '{#PgRegKey}', 'Base Directory', PgBase);
+    { l'installatore di PostgreSQL può terminare con codice 0 senza aver completato: si verifica il risultato }
+    if not DryRun then
+    begin
+      if not RegQueryStringValue(HKLM64, '{#PgRegKey}', 'Base Directory', PgBase) then
+        PgBase := PgDir;
+      if not (FileExists(PgBase + '\bin\psql.exe') and PgServiceRegistered) then
+      begin
+        Note('PostgreSQL non completato: psql=' + IntToStr(Ord(FileExists(PgBase + '\bin\psql.exe'))) +
+             ' servizio=' + IntToStr(Ord(PgServiceRegistered)));
+        CollectPgLogs;
+        MsgBox('L''installazione di PostgreSQL 17 non è stata completata (manca il programma psql o il servizio «{#PgServiceName}»). ' +
+               'I registri sono in ' + ExpandConstant('{app}') + '\logs: inviarli all''assistenza.', mbError, MB_OK);
+        Failed := True; exit;
+      end;
+    end;
   end;
   Note('PostgreSQL in: ' + PgBase);
 
   { 2. attesa del servizio }
   if not DryRun then
   begin
+    Ready := False;
     for i := 1 to 60 do
     begin
-      if RunStep('Attesa del database', PgBase + '\bin\pg_isready.exe', '-h 127.0.0.1 -p 5432') then break;
+      if RunStep('Attesa del database', PgBase + '\bin\pg_isready.exe', '-h 127.0.0.1 -p 5432') then
+      begin
+        Ready := True;
+        break;
+      end;
       Sleep(1000);
+    end;
+    if not Ready then
+    begin
+      Note('Il servizio del database non risponde su 127.0.0.1:5432.');
+      CollectPgLogs;
+      MsgBox('Il servizio del database «{#PgServiceName}» non risponde su 127.0.0.1:5432 dopo un minuto. ' +
+             'Verificare il servizio (services.msc) e i registri in ' + ExpandConstant('{app}') + '\logs: inviarli all''assistenza.', mbError, MB_OK);
+      Failed := True; exit;
     end;
   end;
 
