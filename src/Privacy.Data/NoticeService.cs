@@ -117,7 +117,10 @@ public sealed class NoticeService
         string name, body; int number;
         await using (var cmd = new NpgsqlCommand("""
             SELECT s.first_name || ' ' || s.last_name, dv.body, dv.version_number
-            FROM ps.data_subjects s, ps.document_versions dv WHERE s.id = $1 AND dv.id = $2
+            FROM ps.data_subjects s
+            JOIN ps.document_versions dv ON dv.id = $2
+            JOIN ps.documents d ON d.id = dv.document_id
+            WHERE s.id = $1 AND d.practice_id = s.practice_id
             """, conn, tx))
         {
             cmd.Parameters.AddWithValue(c.SubjectId); cmd.Parameters.AddWithValue(c.VersionId);
