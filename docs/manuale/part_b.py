@@ -46,7 +46,7 @@ def story():
     # ---------------------------------------------------------------- 4
     s += H1("4. Installazione")
     s += H2("4.0 Installazione guidata (consigliata)")
-    s += [P("Il programma di installazione <b>PrivacyStudio-Setup-0.9.1.exe</b> fa in un solo passaggio ciò che i punti 4.1-4.5 descrivono a mano. Va eseguito <b>dall'utente Windows che userà il programma</b> (con i permessi di amministratore, che Windows chiede), "
+    s += [P("Il programma di installazione <b>PrivacyStudio-Setup-0.9.2.exe</b> fa in un solo passaggio ciò che i punti 4.1-4.5 descrivono a mano. Va eseguito <b>dall'utente Windows che userà il programma</b> (con i permessi di amministratore, che Windows chiede), "
             "perché i file di connessione e le chiavi sono personali di quell'utente.")]
     s += STEPS([
         "Avviare il programma di installazione e confermare la richiesta di Windows. Scegliere la cartella del programma (di norma quella proposta).",

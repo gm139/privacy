@@ -7,10 +7,10 @@
 ;   2. copiare in redist\ il programma di installazione di PostgreSQL 17 (EDB), nome indicato in PgInstaller
 ;   3. ISCC PrivacyStudio.iss            (installatore completo, circa 0,5 GB)
 ;      ISCC /DNOPG PrivacyStudio.iss     (senza PostgreSQL incorporato: solo per prove rapide)
-; Prova senza toccare il sistema:  PrivacyStudio-Setup-0.9.1.exe /DRYRUN=1 /VERYSILENT /SUPPRESSMSGBOXES
+; Prova senza toccare il sistema:  PrivacyStudio-Setup-0.9.2.exe /DRYRUN=1 /VERYSILENT /SUPPRESSMSGBOXES
 
 #define AppName "Privacy Studio"
-#define AppVersion "0.9.1"
+#define AppVersion "0.9.2"
 #define PgInstaller "redist\postgresql-17.11-1-windows-x64.exe"
 #define PgServiceName "postgresql-x64-17"
 #define PgRegKey "SOFTWARE\PostgreSQL\Installations\postgresql-x64-17"
@@ -466,7 +466,7 @@ var
 begin
   if DryRun then begin Result := RunStep(Desc, '', ''); exit; end;
   PassFile := ExpandConstant('{tmp}\pgpass.tmp');
-  if not SaveStringToFile('127.0.0.1:5432:' + Db + ':' + User + ':' + Pwd + #13#10, PassFile, False) then
+  if not SaveStringToFile(PassFile, '127.0.0.1:5432:' + Db + ':' + User + ':' + Pwd + #13#10, False) then
   begin
     Note('  ERRORE: impossibile creare il file temporaneo delle credenziali');
     Result := False;

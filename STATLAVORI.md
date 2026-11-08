@@ -1,7 +1,7 @@
 # Privacy Studio — Stato dei lavori
 
 Aggiornato: 8 novembre 2026.
-Versione applicativa: 0.9.1 · Branch `main` · ultimo commit di codice `78ce8bf` (l'ultimo commit può essere successivo: questo file).
+Versione applicativa: 0.9.2 · Branch `main` · ultimo commit di codice: vedere `git log -1` (questo file può essere aggiornato dopo l'ultimo commit).
 
 ## Fatto (da git e documenti)
 
@@ -29,7 +29,7 @@ Fatto nell'installatore (`installer/PrivacyStudio.iss`), compilato ma **non prov
 - Copia esterna **FACOLTATIVA** (decisione del titolare): campo vuoto = nessuna copia, senza domande; se indicata, si controlla che l'unità esista (avviso se è il disco di Windows). Una versione intermedia l'aveva resa obbligatoria: annullata.
 - Come cartella dei backup e copia esterna sono rifiutate radici di disco, Windows, Programmi, Documenti, Desktop e profilo dell'utente.
 - PostgreSQL: chiave di registro senza `bin\psql.exe` = non installato. Cartella `Program Files\PostgreSQL\17` presente ma senza file: viene eliminata (anche prendendo possesso con takeown/icacls se i permessi la bloccano) insieme alla chiave di registro orfana; con file presenti si ferma e spiega. Le due versioni precedenti non bastavano: sul PC di prova l'installazione abortiva ancora.
-- Ultimo installatore in `C:\privacy\PrivacyStudio-Setup-0.9.1.exe` (430160955 byte, 8/11 ore 12:52, SHA-256 `A278A5447418E36EB30861C0CCCB5D6217FD8BD0899048F4B05C5317CCB26CCB`). Compilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync; SDK in `%LOCALAPPDATA%\Microsoft\dotnet-sdk8`, ISCC in `%LOCALAPPDATA%\Programs\InnoSetup`).
+- Ultimo installatore in `C:\privacy\PrivacyStudio-Setup-0.9.2.exe` (430160969 byte, 8/11 ore 13:15, SHA-256 `D78B432E2D93F6CC4A975C93BE05855AF8A431F865EEB3FA6968949E1ABB5182`). Compilato da `C:\Users\mauri\progetti\Privacy-win` (copia Windows del repo, sincronizzata con rsync; SDK in `%LOCALAPPDATA%\Microsoft\dotnet-sdk8`, ISCC in `%LOCALAPPDATA%\Programs\InnoSetup`).
 
 ## Da fare
 
@@ -45,7 +45,7 @@ Fatto nell'installatore (`installer/PrivacyStudio.iss`), compilato ma **non prov
 
 1. **Prova dell'installatore su Windows pulito** (Sandbox o macchina virtuale con checkpoint): è il blocco principale. Finora verificato solo con `/DRYRUN=1`. Seguire la lista di prova; verificare anche PostgreSQL e `pg_restore` veri (T24/T25 finora provati solo in Docker).
 2. **Rapporto dei test T01–T27 con evidenze**: non esiste ancora un rapporto consolidato. Da eseguire la suite e registrare l'esito (in questa sessione non l'ho ancora lanciata: `dotnet` non è nel PATH di WSL).
-3. **Procedura di aggiornamento dello schema** (migrazioni per versioni successive alla 0.9.1).
+3. **Procedura di aggiornamento dello schema** (migrazioni per versioni successive alla 0.9.2).
 4. **Firma digitale del codice** e dell'installatore.
 5. **Pianificazione automatica del backup** (oggi solo manuale); cifratura a flusso per database grandi.
 6. **Protezione del registro esterno delle eliminazioni** (ora non cifrato né firmato).
