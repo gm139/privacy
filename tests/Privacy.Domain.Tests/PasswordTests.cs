@@ -31,6 +31,13 @@ public class PasswordTests
         Assert.False(PasswordHasher.NeedsRehash(PasswordHasher.Dummy));
     }
 
+    [Fact] public void Verify_RejectsAbsurdIterationCount_NoHang()
+    {
+        var salt = Convert.ToBase64String(new byte[16]);
+        var hash = Convert.ToBase64String(new byte[32]);
+        Assert.False(PasswordHasher.Verify("qualunque password", $"pbkdf2-sha256$1$2000000000${salt}${hash}"));
+    }
+
     [Fact] public void Policy_RejectsShortRepetitiveAndUsernameContaining()
     {
         Assert.NotEmpty(PasswordPolicy.Check("corta", "medico"));

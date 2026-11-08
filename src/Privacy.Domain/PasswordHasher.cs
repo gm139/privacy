@@ -12,6 +12,8 @@ public static class PasswordHasher
     public const string Algorithm = "pbkdf2-sha256";
     public const int CurrentIterations = 600_000;   // indicazione OWASP per PBKDF2-HMAC-SHA256
     private const int SaltBytes = 16, HashBytes = 32;
+    /// <summary>Tetto di sicurezza: un verificatore manomesso con milioni di iterazioni non deve bloccare l'accesso per ore.</summary>
+    private const int MaxIterations = 4_000_000;
 
     public static string Hash(string password, int iterations = CurrentIterations)
     {
@@ -37,8 +39,8 @@ public static class PasswordHasher
     {
         iterations = 0; salt = hash = Array.Empty<byte>();
         var p = verifier.Split('$');
-        if (p.Length != 5 || p[0] != Algorithm || p[1] != "1" || !int.TryParse(p[2], out iterations) || iterations < 1) return false;
-        try { salt = Convert.FromBase64String(p[3]); hash = Convert.FromBase64String(p[4]); return hash.Length > 0; }
+        if (p.Length != 5 || p[0] != Algorithm || p[1] != "1" || !int.TryParse(p[2], out iterations) || iterations < 1 || iterations > MaxIterations) return false;
+        try { salt = Convert.FromBase64String(p[3]); hash = Convert.FromBase64String(p[4]); return salt.Length == SaltBytes && hash.Length == HashBytes; }
         catch (FormatException) { return false; }
     }
 }
