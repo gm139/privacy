@@ -70,6 +70,16 @@ public class IncidentTests
     }
 
     [Fact]
+    public async Task Close_WithoutAssessment_IsRejected()
+    {
+        if (Conn is null) return;
+        var (svc, practice, user) = await SetupAsync();
+        var id = await svc.ReportAsync(Report(practice, user));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CloseAsync(Guid.NewGuid(), id, user));
+        Assert.Single(await svc.ListOpenAsync(practice));
+    }
+
+    [Fact]
     public async Task SetAwareness_RecomputesDeadline()
     {
         if (Conn is null) return;

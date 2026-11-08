@@ -20,7 +20,8 @@ public sealed class SubjectService
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "create_subject", ct) is { } existing) return existing;
         await Exec(conn, tx, "SELECT pg_advisory_xact_lock(hashtext('subj:' || $1::text))", ct, practiceId);
-        var seq = (long)(await Scalar(conn, tx, "SELECT count(*) + 1 FROM ps.data_subjects WHERE practice_id = $1", ct, practiceId))!;
+        var seq = (long)(await Scalar(conn, tx,
+            "SELECT (COALESCE(MAX(substring(internal_code from '([0-9]+)$')::int), 0) + 1)::bigint FROM ps.data_subjects WHERE practice_id = $1", ct, practiceId))!;
         var id = (Guid)(await Scalar(conn, tx, """
             INSERT INTO ps.data_subjects (practice_id, internal_code, first_name, last_name, birth_date, tax_code, email, phone, created_by)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id

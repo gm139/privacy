@@ -38,9 +38,12 @@ public sealed class RightsRequestService
         // numero progressivo per studio e anno, serializzato per evitare duplicati di riferimento
         await Exec(conn, tx, "SELECT pg_advisory_xact_lock(hashtext('req:' || $1::text))", ct, c.PracticeId);
         var year = TimeZoneInfo.ConvertTime(c.ReceivedAt, TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome")).Year;
-        var seq = (long)(await Scalar(conn, tx,
-            "SELECT count(*) + 1 FROM ps.rights_requests WHERE practice_id = $1 AND reference_code LIKE $2", ct,
-            c.PracticeId, $"R-{year}-%"))!;
+        // numero progressivo per studio e anno: si parte dal MASSIMO esistente, non dal conteggio, perché
+        // un'eliminazione fisica (dispose_item) non deve far riusare un riferimento già assegnato
+        var seq = (long)(await Scalar(conn, tx, """
+            SELECT (COALESCE(MAX(substring(reference_code from '([0-9]+)$')::int), 0) + 1)::bigint
+            FROM ps.rights_requests WHERE practice_id = $1 AND reference_code LIKE $2
+            """, ct, c.PracticeId, $"R-{year}-%"))!;
         var reference = $"R-{year}-{seq:0000}";
 
         var id = (Guid)(await Scalar(conn, tx, """
@@ -84,6 +87,13 @@ public sealed class RightsRequestService
         await using var conn = await _db.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "decide_request", ct) is not null) return;
+        // un diritto si decide una volta sola: senza questo controllo la decisione verrebbe duplicata (e l'audit direbbe «riuscito»)
+        var open = (bool)(await Scalar(conn, tx, """
+            SELECT EXISTS (SELECT 1 FROM ps.request_rights rr
+              WHERE rr.request_id = $1 AND rr.right_code = $2
+                AND NOT EXISTS (SELECT 1 FROM ps.request_decisions d WHERE d.request_id = rr.request_id AND d.right_code = rr.right_code))
+            """, ct, requestId, rightCode))!;
+        if (!open) throw new InvalidOperationException("diritto inesistente o già deciso");
         await Exec(conn, tx, """
             INSERT INTO ps.request_decisions (request_id, right_code, outcome_code, reason, decided_by, decided_at, sent_at, created_by)
             VALUES ($1,$2,$3,$4,$5,now(),$6,$5)
@@ -100,6 +110,9 @@ public sealed class RightsRequestService
         await using var conn = await _db.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "close_request", ct) is not null) return;
+        var state = (string?)(await Scalar(conn, tx, "SELECT status_code FROM ps.rights_requests WHERE id = $1", ct, requestId));
+        if (state is null) throw new InvalidOperationException("richiesta inesistente");
+        if (state is "closed" or "cancelled") throw new InvalidOperationException("richiesta già chiusa");
         await Exec(conn, tx, "UPDATE ps.rights_requests SET status_code = 'closed', closed_at = now() WHERE id = $1", ct, requestId);
         await AddEvent(conn, tx, requestId, "response_sent", actorId, "Richiesta chiusa", ct);
         await Audit(conn, tx, actorId, "request.close", requestId, ct);

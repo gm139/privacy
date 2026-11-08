@@ -32,8 +32,10 @@ public sealed class IncidentService
 
         await Exec(conn, tx, "SELECT pg_advisory_xact_lock(hashtext('inc:' || $1::text))", ct, c.PracticeId);
         var year = TimeZoneInfo.ConvertTime(c.DiscoveredAt, TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome")).Year;
-        var seq = (long)(await Scalar(conn, tx,
-            "SELECT count(*) + 1 FROM ps.incidents WHERE practice_id = $1 AND reference_code LIKE $2", ct, c.PracticeId, $"I-{year}-%"))!;
+        var seq = (long)(await Scalar(conn, tx, """
+            SELECT (COALESCE(MAX(substring(reference_code from '([0-9]+)$')::int), 0) + 1)::bigint
+            FROM ps.incidents WHERE practice_id = $1 AND reference_code LIKE $2
+            """, ct, c.PracticeId, $"I-{year}-%"))!;
         var id = (Guid)(await Scalar(conn, tx, """
             INSERT INTO ps.incidents (practice_id, reference_code, discovered_at, awareness_at, description, classification_code, assignee_id, created_by)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$7) RETURNING id
@@ -52,6 +54,8 @@ public sealed class IncidentService
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "incident_awareness", ct) is not null) return;
         await Exec(conn, tx, "UPDATE ps.incidents SET awareness_at = $2, status_code = CASE WHEN status_code = 'reported' THEN 'assessment' ELSE status_code END WHERE id = $1", ct, incidentId, awarenessAt);
+        if (await Scalar(conn, tx, "SELECT 1 FROM ps.incidents WHERE id = $1", ct, incidentId) is null)
+            throw new InvalidOperationException("incidente inesistente");
         await Audit(conn, tx, actorId, "incident.awareness", "incident", incidentId, ct);
         await SetResult(conn, tx, commandId, incidentId, ct);
         await tx.CommitAsync(ct);
@@ -98,7 +102,11 @@ public sealed class IncidentService
         await using var conn = await _db.OpenAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
         if (await ClaimCommandAsync(conn, tx, commandId, "close_incident", ct) is not null) return;
-        await Exec(conn, tx, "UPDATE ps.incidents SET status_code = 'closed', closed_at = now() WHERE id = $1", ct, incidentId);
+        // la chiusura richiede la valutazione: il trigger del database lo impone, qui il messaggio è più comprensibile
+        var assessed = (bool)(await Scalar(conn, tx, "SELECT EXISTS (SELECT 1 FROM ps.incident_assessments WHERE incident_id = $1)", ct, incidentId))!;
+        if (!assessed) throw new InvalidOperationException("valutazione mancante: registrare la valutazione prima di chiudere l'incidente");
+        var changed = await Exec(conn, tx, "UPDATE ps.incidents SET status_code = 'closed', closed_at = now() WHERE id = $1 AND status_code <> 'closed'", ct, incidentId);
+        if (changed == 0) throw new InvalidOperationException("incidente inesistente o già chiuso");
         await Audit(conn, tx, actorId, "incident.close", "incident", incidentId, ct);
         await SetResult(conn, tx, commandId, incidentId, ct);
         await tx.CommitAsync(ct);

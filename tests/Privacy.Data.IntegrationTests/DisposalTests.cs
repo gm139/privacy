@@ -81,6 +81,9 @@ public class DisposalTests
         var inc = new IncidentService(db);
         var id = await inc.ReportAsync(new ReportIncidentCommand(Guid.NewGuid(), practice, user, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, "Smarrimento dispositivo"));
         await inc.AddActionAsync(Guid.NewGuid(), id, user, "containment", DateTimeOffset.UtcNow, "Dispositivo bloccato", null);
+        // la chiusura richiede la valutazione (art. 33)
+        await inc.AssessAsync(new AssessIncidentCommand(Guid.NewGuid(), id, user, "risk", "Dispositivo smarrito",
+            "Accesso non autorizzato possibile", "notify", "not_communicate", 1, null, null, new[] { "health_relation" }));
         await inc.CloseAsync(Guid.NewGuid(), id, user);
 
         await using (var c = await db.OpenAsync())

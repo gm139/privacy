@@ -111,6 +111,28 @@ public class RightsRequestTests
     }
 
     [Fact]
+    public async Task Reference_AfterPhysicalDeletion_DoesNotCollide()
+    {
+        if (Conn is null) return;
+        var (svc, practice, user, db) = await SetupAsync();
+        var first = await svc.RegisterAsync(Cmd(practice, user));
+        await svc.RegisterAsync(Cmd(practice, user));
+        // la prima richiesta viene chiusa e poi eliminata fisicamente come farebbe la conservazione
+        await svc.DecideAsync(Guid.NewGuid(), first, user, "access", "granted", null, DateTimeOffset.UtcNow);
+        await svc.CloseAsync(Guid.NewGuid(), first, user);
+        var ledgerPath = Path.Combine(Path.GetTempPath(), "privacy-ledger-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        try
+        {
+            var disposal = new DisposalService(db, new DisposalLedger(ledgerPath));
+            Assert.True(await disposal.DisposeAsync(Guid.NewGuid(), "rights_request", first, user, "Test della numerazione"));
+            // con count(*) + 1 il nuovo riferimento sarebbe R-2026-0002 e colliderebbe con quello ancora presente
+            var third = await svc.RegisterAsync(Cmd(practice, user));
+            Assert.Equal("R-2026-0003", (await svc.GetDetailAsync(third))!.ReferenceCode);
+        }
+        finally { File.Delete(ledgerPath); }
+    }
+
+    [Fact]
     public async Task Catalogs_AreReadable_AndOnlyWhitelistedTables()
     {
         if (Conn is null) return;
