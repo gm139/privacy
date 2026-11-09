@@ -46,7 +46,7 @@ def story():
     # ---------------------------------------------------------------- 4
     s += H1("4. Installazione")
     s += H2("4.0 Installazione guidata (consigliata)")
-    s += [P("Il programma di installazione <b>PrivacyStudio-Setup-0.9.3.exe</b> fa in un solo passaggio ciò che i punti 4.1-4.5 descrivono a mano. Va eseguito <b>dall'utente Windows che userà il programma</b> (con i permessi di amministratore, che Windows chiede), "
+    s += [P("Il programma di installazione <b>PrivacyStudio-Setup-0.9.4.exe</b> fa in un solo passaggio ciò che i punti 4.1-4.5 descrivono a mano. Va eseguito <b>dall'utente Windows che userà il programma</b> (con i permessi di amministratore, che Windows chiede), "
             "perché i file di connessione e le chiavi sono personali di quell'utente.")]
     s += STEPS([
         "Avviare il programma di installazione e confermare la richiesta di Windows. Scegliere la cartella del programma (di norma quella proposta).",
@@ -130,7 +130,7 @@ psql -U privacy_migrator -d privacy -v ON_ERROR_STOP=1 -f 004_disposal_ledger.sq
         ["Campo", "A che cosa serve"],
         ["Denominazione dello studio", "Compare nelle informative."],
         ["Titolare del trattamento", "Nome e cognome del medico. È il soggetto che decide finalità e mezzi del trattamento (art. 4, n. 7)."],
-        ["Codice fiscale o partita IVA (facoltativo)", "Identificativo del titolare nelle informative, se lo si vuole indicare."],
+        ["Codice fiscale o partita IVA (facoltativo)", "Identificativo del titolare nelle informative, se lo si vuole indicare. Il programma controlla la cifra o il carattere di controllo e segnala un errore di battitura prima di proseguire."],
         ["Indirizzo dello studio", "Compare nelle informative."],
         ["Contatto per le richieste privacy", "Email o PEC a cui i pazienti scrivono per esercitare i diritti. Va mantenuto attivo e controllato."],
         ["Telefono (facoltativo), contatto del DPO (facoltativo)", "Il contatto del DPO, se nominato, deve essere indicato nell'informativa (art. 13, par. 1, lett. b)."],

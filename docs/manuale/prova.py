@@ -12,7 +12,7 @@ def rows(items):
 
 def story():
     s = [Paragraph("Lista di prova dell'installazione", S["title_toc"]), Bar(), Spacer(1, 6)]
-    s += [Paragraph("Privacy Studio 0.9.3 - programma di installazione (bozza)", S["title2"])]
+    s += [Paragraph("Privacy Studio 0.9.4 - programma di installazione (bozza)", S["title2"])]
     s += [P("Questa lista serve a provare <b>per la prima volta</b> l'installazione reale su un computer Windows pulito. Finora l'installatore è stato verificato solo in \"prova a secco\": "
             "l'installazione di PostgreSQL, la creazione del database e dei ruoli, e i permessi sui file <b>non sono mai stati eseguiti</b>. Ogni riga ha un risultato atteso: "
             "se non coincide, annotare cosa è successo e raccogliere i file indicati nella sezione E. Un KO non è un problema della prova: è ciò che la prova deve trovare.")]
@@ -25,11 +25,11 @@ def story():
         ("A2", "Fare un'<b>istantanea</b> della macchina, chiamata \"pulita\".", "Si può tornare a questo stato dopo ogni prova."),
         ("A3", "In PowerShell: <font name='UM'>Get-Service postgres*</font> e <font name='UM'>Test-Path \"C:\\Program Files\\PostgreSQL\"</font>.", "Nessun servizio; <font name='UM'>False</font>."),
         ("A4", "<font name='UM'>netstat -ano | findstr :5432</font>", "Nessun risultato: la porta 5432 è libera."),
-        ("A5", "Copiare nella macchina il file <font name='UM'>PrivacyStudio-Setup-0.9.3.exe</font> (circa 410 MB) in <font name='UM'>C:\\Temp</font>. Confrontare l'impronta: <font name='UM'>Get-FileHash C:\\Temp\\PrivacyStudio-Setup-0.9.3.exe</font>.", "L'impronta SHA-256 del file pubblicato nella release <font name='UM'>v0.9.3</font> è <font name='UM'>9E3011D57DB4053635F5882781B825C44A3A3D31FF9FFA6093DC05AB03B099BB</font> (verificabile anche con <font name='UM'>SHA256SUMS.txt</font>)."),
+        ("A5", "Copiare nella macchina il file <font name='UM'>PrivacyStudio-Setup-0.9.4.exe</font> (circa 410 MB) in <font name='UM'>C:\\Temp</font>. Confrontare l'impronta: <font name='UM'>Get-FileHash C:\\Temp\\PrivacyStudio-Setup-0.9.4.exe</font>.", "L'impronta SHA-256 del file pubblicato nella release <font name='UM'>v0.9.4</font> è <font name='UM'>9AD30F2744839F970412FF4F676E7E73E0B72A7929CD3F44A6348D30DD35B227</font> (verificabile anche con <font name='UM'>SHA256SUMS.txt</font>)."),
     ])
 
     s += H2("B. Installazione normale")
-    s += [P("Avviare l'installatore con il registro attivo, da un prompt dei comandi: <font name='UM'>C:\\Temp\\PrivacyStudio-Setup-0.9.3.exe /LOG=\"C:\\Temp\\setup.log\"</font>. "
+    s += [P("Avviare l'installatore con il registro attivo, da un prompt dei comandi: <font name='UM'>C:\\Temp\\PrivacyStudio-Setup-0.9.4.exe /LOG=\"C:\\Temp\\setup.log\"</font>. "
             "Annotare l'ora di inizio e di fine.")]
     s += rows([
         ("B1", "Confermare la richiesta di Windows (consenso amministratore).", "Windows mostra l'avviso \"editore sconosciuto\" (previsto: il programma non è firmato). La procedura guidata è in italiano."),
@@ -102,7 +102,7 @@ def story():
 if __name__ == "__main__":
     doc = Doc(sys.argv[1] if len(sys.argv) > 1 else "Lista-di-prova.pdf")
     doc.flat = True
-    doc.footer = "Lista di prova dell'installazione - Privacy Studio 0.9.3 - novembre 2026"
+    doc.footer = "Lista di prova dell'installazione - Privacy Studio 0.9.4 - novembre 2026"
     doc.title = "Privacy Studio - Lista di prova dell'installazione"
     # senza copertina: si parte direttamente dal modello «main»
     doc.pageTemplates = [t for t in doc.pageTemplates if t.id == "main"]

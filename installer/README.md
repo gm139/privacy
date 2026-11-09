@@ -14,7 +14,7 @@ ISCC /DNOPG PrivacyStudio.iss     # senza PostgreSQL incorporato, per prove rapi
 Prova a secco (per utente, senza amministratore, in una cartella temporanea):
 
 ```
-PrivacyStudio-Setup-0.9.3.exe /DRYRUN=1 /PGPASSWORD=ProvaPassword-123 /EXTERNALDIR=<cartella esistente> /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR=<cartella> /LOG=<file>
+PrivacyStudio-Setup-0.9.4.exe /DRYRUN=1 /PGPASSWORD=ProvaPassword-123 /EXTERNALDIR=<cartella esistente> /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR=<cartella> /LOG=<file>
 ```
 
 Cosa fa l'installazione reale: installa PostgreSQL 17 (se manca) in modo non interattivo, lo limita a `localhost`, crea database `privacy` e ruoli con password casuali,
