@@ -22,6 +22,7 @@ public sealed class SetupService
     /// <summary>Crea lo studio (attivo) e il primo utente. Rifiuta se uno studio esiste già o se la password non rispetta la politica.</summary>
     public async Task<(Guid PracticeId, Guid UserId)> CreateFirstAsync(PracticeInput p, string username, string displayName, string password, CancellationToken ct = default)
     {
+        if (CodiceFiscale.Check(p.ControllerIdentifier) is { } cf) throw new ArgumentException(cf, nameof(p));
         var problems = PasswordPolicy.Check(password, username);
         if (problems.Count > 0) throw new ArgumentException("password non accettabile: " + string.Join(", ", problems), nameof(password));
         Guid practice, user;

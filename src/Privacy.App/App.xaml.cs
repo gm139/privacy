@@ -6,6 +6,37 @@ namespace Privacy.App;
 
 public partial class App : Application
 {
+    public App()
+    {
+        // un errore non gestito lascia una traccia scritta: senza, una finestra che si chiude non dice nulla
+        DispatcherUnhandledException += OnDispatcherException;
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => LogError("processo", e.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, e) => { LogError("attività", e.Exception); e.SetObserved(); };
+    }
+
+    private void OnDispatcherException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        LogError("interfaccia", e.Exception);
+        MessageBox.Show("Errore imprevisto. Il dettaglio è stato scritto in:" + Environment.NewLine + ErrorLogPath +
+                        Environment.NewLine + Environment.NewLine + "Il programma verrà chiuso; i dati già salvati non sono toccati.",
+                        "Privacy Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+        e.Handled = true;
+        Shutdown(10);
+    }
+
+    internal static string ErrorLogPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PrivacyStudio", "errori.log");
+
+    private static void LogError(string kind, Exception? ex)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(ErrorLogPath)!);
+            File.AppendAllText(ErrorLogPath, $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}\t{kind}\t{ex}{Environment.NewLine}");
+        }
+        catch { /* se non si può scrivere il registro non si complica l'errore originale */ }
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);

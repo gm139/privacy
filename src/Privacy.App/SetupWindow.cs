@@ -1,5 +1,6 @@
 using System.Windows.Controls;
 using Privacy.Data;
+using Privacy.Domain;
 
 namespace Privacy.App;
 
@@ -22,7 +23,7 @@ public sealed class SetupWindow : DialogForm
         AddNote("Questi dati compaiono nelle informative ai pazienti. Il titolare del trattamento è il medico (o lo studio) che decide finalità e mezzi del trattamento. Nel passaggio successivo si sceglie la password di accesso.");
         PracticeName = AddText("_Denominazione dello studio");
         Controller = AddText("_Titolare del trattamento (nome e cognome)");
-        Identifier = AddText("Codice fiscale o partita IVA del titolare (facoltativo)");
+        Identifier = AddText("Codice fiscale o partita IVA del titolare (facoltativo; 16 caratteri o 11 cifre)");
         Address = AddText("_Indirizzo dello studio");
         PrivacyContact = AddText("Contatto per le richieste privacy (email o _PEC)");
         Phone = AddText("Telefono (facoltativo)");
@@ -34,6 +35,9 @@ public sealed class SetupWindow : DialogForm
         {
             foreach (var (v, n) in new[] { (PracticeName.Text, "denominazione"), (Controller.Text, "titolare"), (Address.Text, "indirizzo"), (PrivacyContact.Text, "contatto privacy") })
                 if (string.IsNullOrWhiteSpace(v)) return Task.FromResult<string?>($"Campo obbligatorio: {n}.");
+
+            // il codice finisce nelle informative: un errore di battitura va scoperto subito
+            if (CodiceFiscale.Check(Identifier.Text) is { } cf) return Task.FromResult<string?>(cf);
 
             // passaggio 2: credenziali
             ClearFields();
